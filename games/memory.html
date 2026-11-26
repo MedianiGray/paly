@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>记忆翻牌 · GODLIKE INVINCIBLE FUN ZONE</title>
+<meta name="theme-color" content="#0b0e11">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><text x='16' y='24' font-size='18' text-anchor='middle' fill='%2335e0c8'>?</text></svg>">
+<style>
+:root{
+  --bg:#0b0e11; --panel:#12171c; --line:#222b33; --ink:#e9eff5; --dim:#8b98a5;
+  --accent:#35e0c8; --accent-2:#ffb347;
+  --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh;
+  background:radial-gradient(900px 600px at 50% -10%,rgba(53,224,200,.08),transparent 65%),var(--bg);
+  color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  padding:16px 16px calc(20px + env(safe-area-inset-bottom));
+  -webkit-font-smoothing:antialiased; overscroll-behavior:none;
+}
+.bar{width:min(100%,460px); display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px}
+.back{
+  display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid var(--line);
+  border-radius:10px; color:var(--dim); text-decoration:none; font-size:13px; background:var(--panel);
+  transition:color .18s,border-color .18s;
+}
+.back:hover{color:var(--ink); border-color:rgba(53,224,200,.4)}
+.title{font-family:var(--mono); font-size:12.5px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase}
+.hud{width:min(100%,460px); display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px}
+.stat{flex:1 1 88px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel); display:flex; align-items:baseline; justify-content:space-between; gap:8px}
+.stat .label{font-size:11.5px; letter-spacing:.1em; color:#6f7d8a; white-space:nowrap}
+.stat strong{font-family:var(--mono); font-size:18px; font-weight:600; font-variant-numeric:tabular-nums}
+.stat.best strong{color:var(--accent-2); font-size:13px; white-space:nowrap}
+.hud .newbtn{flex:0 0 auto; padding:0 14px}
+.btns{display:flex; gap:8px}
+button{
+  font-family:inherit; font-size:13px; color:#c6d3de; background:var(--panel);
+  border:1px solid var(--line); border-radius:12px; padding:0 13px; height:auto; cursor:pointer;
+  transition:border-color .18s,color .18s; -webkit-tap-highlight-color:transparent;
+}
+button:hover{border-color:rgba(53,224,200,.45); color:var(--ink)}
+button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
+.stage{position:relative; width:min(100%,460px)}
+.deck{
+  display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:8px;
+  background:var(--panel); border:1px solid var(--line); border-radius:16px;
+}
+.card{
+  position:relative; aspect-ratio:1; padding:0; border:0; background:transparent;
+  perspective:900px; cursor:pointer; -webkit-tap-highlight-color:transparent;
+}
+.card-inner{
+  position:relative; display:block; width:100%; height:100%;
+  transform-style:preserve-3d; transition:transform .38s cubic-bezier(.3,.9,.35,1);
+  border-radius:11px;
+}
+.card.flipped .card-inner{transform:rotateY(180deg)}
+.face{
+  position:absolute; inset:0; display:grid; place-items:center; border-radius:11px;
+  backface-visibility:hidden; -webkit-backface-visibility:hidden;
+}
+.face.back{
+  background:#1b232b; border:1px solid #263039;
+  color:#42505c; font-family:var(--mono); font-size:clamp(15px,4.6vw,20px);
+  background-image:linear-gradient(135deg,rgba(53,224,200,.06),transparent 60%);
+}
+.face.front{
+  transform:rotateY(180deg); background:#22303a; border:1px solid #2d3d49;
+  font-size:clamp(22px,7vw,34px); line-height:1;
+}
+/* 兜底：即使 backface-visibility 失效，未翻开的牌也只露背面 */
+.card:not(.flipped):not(.matched) .face.front{visibility:hidden}
+.card.flipped .face.back,
+.card.matched .face.back{visibility:hidden}
+.card.matched .card-inner{transform:rotateY(180deg)}
+.card.matched .face.front{
+  border-color:rgba(53,224,200,.55); background:#1a2f2c;
+  box-shadow:0 0 16px -6px rgba(53,224,200,.6);
+}
+.card.matched{cursor:default}
+.card.pop .card-inner{animation:pop .22s ease-out}
+@keyframes pop{0%{transform:scale(.9)}60%{transform:scale(1.04)}100%{transform:scale(1)}}
+.shake .card-inner{animation:shake .3s ease-in-out}
+@keyframes shake{0%,100%{transform:rotateY(180deg) translateX(0)}25%{transform:rotateY(180deg) translateX(-4px)}75%{transform:rotateY(180deg) translateX(4px)}}
+.overlay{
+  position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px;
+  padding:26px; text-align:center; border-radius:16px; background:rgba(8,11,14,.86);
+  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+}
+.overlay.show{display:flex}
+.overlay h2{margin:0; font-size:clamp(20px,5.6vw,28px); font-weight:650}
+.overlay p{margin:0; color:var(--dim); font-size:14px; max-width:22em; line-height:1.7}
+.overlay .row{display:flex; gap:22px; font-family:var(--mono)}
+.overlay .row div{display:flex; flex-direction:column; gap:2px}
+.overlay .row span{font-size:11px; letter-spacing:.12em; color:#6f7d8a}
+.overlay .row b{font-size:26px; color:var(--accent)}
+.overlay button{height:40px; background:rgba(53,224,200,.14); border-color:rgba(53,224,200,.5); color:#d7fff9}
+.hint{width:min(100%,460px); margin:14px 0 0; color:#5c6772; font-size:12.5px; line-height:1.7; text-align:center}
+.goal{
+  width:min(100%,460px); margin:0 0 12px; padding:9px 13px;
+  border-left:2px solid rgba(53,224,200,.5); background:rgba(18,23,28,.6);
+  font-size:12.5px; color:#8b98a5; line-height:1.6;
+}
+.goal b{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--accent); margin-right:8px}
+@media (max-width:420px){ .deck{gap:6px; padding:6px} .face{border-radius:9px} }
+@media (prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a class="back" href="../index.html">← 返回</a>
+  <span class="title">Memory</span>
+</div>
+
+<div class="hud">
+  <div class="stat"><span class="label">步数</span><strong id="moves">0</strong></div>
+  <div class="stat"><span class="label">用时</span><strong id="time">0s</strong></div>
+  <div class="stat best"><span class="label">最佳</span><strong id="best">—</strong></div>
+  <button id="newBtn" class="newbtn" type="button">重开</button>
+</div>
+
+<p class="goal"><b>目标</b>八对牌全部配对。翻开两张算一步，步数越少越强。</p>
+
+<div class="stage">
+  <div class="deck" id="deck" aria-label="记忆翻牌棋盘"></div>
+  <div class="overlay" id="overlay">
+    <h2 id="ovTitle">清台了</h2>
+    <div id="ovBody"></div>
+    <button id="ovBtn" type="button">再来一局</button>
+  </div>
+</div>
+
+<p class="hint">翻开两张一样的就消除。八对牌，翻开两张算一步，步数越少越厉害。</p>
+
+<script>
+(function () {
+  'use strict';
+
+  var EMOJI = ['🍒', '🍋', '🍇', '🍑', '🥝', '🍉', '🌰', '🍄'];
+  var BEST_KEY = 'paly.memory.best';
+  var PAIRS = EMOJI.length;
+
+  var deckEl = document.getElementById('deck');
+  var movesEl = document.getElementById('moves');
+  var timeEl = document.getElementById('time');
+  var bestEl = document.getElementById('best');
+  var overlay = document.getElementById('overlay');
+  var ovTitle = document.getElementById('ovTitle');
+  var ovBody = document.getElementById('ovBody');
+  var ovBtn = document.getElementById('ovBtn');
+  var newBtn = document.getElementById('newBtn');
+
+  var cards = [];        // {el, emoji, matched}
+  var first = null;
+  var lock = false;
+  var moves = 0;
+  var matchedCount = 0;
+  var seconds = 0;
+  var timerId = null;
+  var started = false;
+  var best = null;
+
+  try {
+    var raw = localStorage.getItem(BEST_KEY);
+    if (raw) best = JSON.parse(raw);
+  } catch (e) { best = null; }
+  renderBest();
+
+  function renderBest() {
+    bestEl.textContent = best && best.moves ? (best.moves + '步 ' + best.seconds + 's') : '—';
+  }
+
+  function shuffle(arr) {
+    for (var i = arr.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1));
+      var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+    }
+    return arr;
+  }
+
+  function build() {
+    var pool = [];
+    EMOJI.forEach(function (e) { pool.push(e); pool.push(e); });
+    shuffle(pool);
+
+    deckEl.innerHTML = '';
+    cards = [];
+    pool.forEach(function (e) {
+      var btn = document.createElement('button');
+      btn.className = 'card';
+      btn.type = 'button';
+      btn.setAttribute('aria-label', '未翻开的牌');
+      btn.innerHTML =
+        '<span class="card-inner">' +
+          '<span class="face back">?</span>' +
+          '<span class="face front">' + e + '</span>' +
+        '</span>';
+
+      var card = { el: btn, emoji: e, matched: false, flipped: false };
+      btn.addEventListener('click', function () { onFlip(card); });
+      deckEl.appendChild(btn);
+      cards.push(card);
+    });
+  }
+
+  function startTimer() {
+    if (timerId) return;
+    started = true;
+    timerId = setInterval(function () {
+      seconds += 1;
+      timeEl.textContent = seconds + 's';
+    }, 1000);
+  }
+
+  function stopTimer() {
+    if (timerId) { clearInterval(timerId); timerId = null; }
+  }
+
+  function onFlip(card) {
+    if (lock || card.matched || card.flipped) return;
+    if (!started) startTimer();
+
+    card.flipped = true;
+    card.el.classList.add('flipped', 'pop');
+    card.el.setAttribute('aria-label', card.emoji);
+    setTimeout(function () { card.el.classList.remove('pop'); }, 240);
+
+    if (!first) { first = card; return; }
+
+    moves += 1;
+    movesEl.textContent = moves;
+
+    if (first.emoji === card.emoji) {
+      first.matched = true;
+      card.matched = true;
+      first.el.classList.add('matched');
+      card.el.classList.add('matched');
+      first = null;
+      matchedCount += 1;
+      if (matchedCount === PAIRS) finish();
+    } else {
+      lock = true;
+      var a = first, b = card;
+      first = null;
+      setTimeout(function () {
+        a.el.classList.remove('flipped');
+        b.el.classList.remove('flipped');
+        a.el.setAttribute('aria-label', '未翻开的牌');
+        b.el.setAttribute('aria-label', '未翻开的牌');
+        a.flipped = false;
+        b.flipped = false;
+        lock = false;
+      }, 850);
+    }
+  }
+
+  function finish() {
+    stopTimer();
+    var isBest = !best || moves < best.moves || (moves === best.moves && seconds < best.seconds);
+    if (isBest) {
+      best = { moves: moves, seconds: seconds };
+      try { localStorage.setItem(BEST_KEY, JSON.stringify(best)); } catch (e) {}
+      renderBest();
+    }
+    showOverlay(
+      '清台了',
+      '<div class="row">' +
+        '<div><span>步数</span><b>' + moves + '</b></div>' +
+        '<div><span>用时</span><b>' + seconds + 's</b></div>' +
+      '</div>' +
+      '<p>' + (isBest ? '新纪录。' : '最佳纪录 ' + best.moves + ' 步 ' + best.seconds + 's。') + '</p>',
+      '再来一局'
+    );
+  }
+
+  function showOverlay(title, bodyHtml, btnText) {
+    ovTitle.textContent = title;
+    ovBody.innerHTML = bodyHtml;
+    ovBtn.textContent = btnText;
+    overlay.classList.add('show');
+  }
+
+  function newGame() {
+    stopTimer();
+    overlay.classList.remove('show');
+    first = null;
+    lock = false;
+    moves = 0;
+    matchedCount = 0;
+    seconds = 0;
+    started = false;
+    movesEl.textContent = '0';
+    timeEl.textContent = '0s';
+    build();
+  }
+
+  newBtn.addEventListener('click', newGame);
+  ovBtn.addEventListener('click', newGame);
+
+  newGame();
+})();
+</script>
+</body>
+</html>
