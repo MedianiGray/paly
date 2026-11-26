@@ -380,6 +380,92 @@ kbd {
 
 .note strong { color: var(--accent-2); font-weight: 600; }
 
+/* ---------- 规划 ---------- */
+
+.roadmap {
+  margin-top: 46px;
+  padding: 24px 24px 20px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(22, 28, 34, 0.9), rgba(18, 23, 28, 0.75));
+}
+
+.roadmap h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #c8d4de;
+}
+
+.roadmap-intro {
+  margin: 0 0 16px;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.65;
+}
+
+.roadmap-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid rgba(34, 43, 51, 0.7);
+}
+
+.roadmap-list li {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  padding: 10px 2px;
+  border-bottom: 1px solid rgba(34, 43, 51, 0.45);
+  font-size: 14px;
+}
+
+.rm-name {
+  flex: 0 0 6.2em;
+  color: var(--ink);
+  font-weight: 560;
+}
+
+.rm-aim {
+  flex: 1;
+  color: var(--dim);
+}
+
+.rm-tag {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  padding: 2px 8px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  color: #6f7d8a;
+  white-space: nowrap;
+}
+
+.rm-tag.now {
+  border-color: rgba(255, 179, 71, 0.4);
+  background: rgba(255, 179, 71, 0.08);
+  color: var(--accent-2);
+}
+
+.roadmap-out {
+  margin: 16px 0 0;
+  padding-left: 11px;
+  border-left: 2px solid rgba(255, 179, 71, 0.4);
+  color: #8b98a5;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+@media (max-width: 620px) {
+  .roadmap { padding: 18px 16px 16px; margin-top: 34px; }
+  .roadmap-list li { flex-wrap: wrap; gap: 4px 10px; padding: 9px 0; font-size: 13.5px; }
+  .rm-name { flex: 0 0 auto; }
+  .rm-aim { flex: 1 1 100%; order: 2; }
+  .rm-tag { order: 3; margin-left: auto; }
+}
+
 /* ---------- 页脚 ---------- */
 
 .foot {
