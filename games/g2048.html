@@ -109,7 +109,6 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   <div class="stat"><span class="label">分数</span><strong id="score">0</strong></div>
   <div class="stat best"><span class="label">最高</span><strong id="best">0</strong></div>
   <div class="btns">
-    <button id="undoBtn" type="button" disabled>撤销</button>
     <button id="newBtn" type="button">重开</button>
   </div>
 </div>
@@ -136,7 +135,6 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   var board = document.getElementById('board');
   var scoreEl = document.getElementById('score');
   var bestEl = document.getElementById('best');
-  var undoBtn = document.getElementById('undoBtn');
   var newBtn = document.getElementById('newBtn');
   var overlay = document.getElementById('overlay');
   var ovTitle = document.getElementById('ovTitle');
@@ -144,7 +142,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   var ovBtn = document.getElementById('ovBtn');
 
   var tiles = [];
-  var grid, score, best, state, prevGrid, prevScore, canUndo, winShown;
+  var grid, score, best, state, winShown;
 
   for (var i = 0; i < SIZE * SIZE; i++) {
     var t = document.createElement('div');
@@ -213,7 +211,6 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
         el.classList.add('bump');
       }
     }
-    undoBtn.disabled = !canUndo;
   }
 
   function slideRow(row) {
@@ -270,9 +267,6 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
     if (sameGrid(before, grid)) return;   // 没有移动就不生成新格
 
-    prevGrid = before;
-    prevScore = score;
-    canUndo = true;
     score += gainedAll;
     updateScore();
 
@@ -326,27 +320,11 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     grid = emptyGrid();
     score = 0;
     state = 'playing';
-    prevGrid = null;
-    prevScore = 0;
-    canUndo = false;
     winShown = false;
     addRandom();
     addRandom();
     scoreEl.textContent = '0';
-    undoBtn.disabled = true;
     hideOverlay();
-    render(null, null);
-  }
-
-  function undo() {
-    if (!canUndo || state === 'over') return;
-    grid = cloneGrid(prevGrid);
-    score = prevScore;
-    canUndo = false;
-    winShown = winShown && maxTile() >= 2048;
-    if (state === 'won') state = 'playing';
-    hideOverlay();
-    updateScore();
     render(null, null);
   }
 
@@ -359,7 +337,6 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   document.addEventListener('keydown', function (e) {
     var dir = KEYMAP[e.key];
     if (dir) { e.preventDefault(); move(dir); }
-    if (e.key === 'z' || e.key === 'Z') undo();
     if (e.key === 'r' || e.key === 'R') startNew();
   });
 
@@ -386,7 +363,6 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     e.preventDefault();
   }, { passive: false });
 
-  undoBtn.addEventListener('click', undo);
   newBtn.addEventListener('click', startNew);
   ovBtn.addEventListener('click', function () {
     if (state === 'won') { state = 'playing'; hideOverlay(); return; }
