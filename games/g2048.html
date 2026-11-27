@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>2048 · paly</title>
+<title>2048 · Pro Max</title>
 <meta name="theme-color" content="#0b0e11">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><text x='16' y='23' font-size='17' text-anchor='middle' fill='%23ffb347' font-family='monospace'>2</text></svg>">
 <style>
@@ -30,10 +30,11 @@ body{
 .back:hover{color:var(--ink); border-color:rgba(255,179,71,.42)}
 .title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase}
 .hud{width:min(100%,460px); display:flex; flex-wrap:wrap; gap:10px; margin-bottom:12px}
-.stat{flex:1 1 88px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel); display:flex; align-items:baseline; justify-content:space-between; gap:8px}
+.stat{flex:1 1 84px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel); display:flex; align-items:baseline; justify-content:space-between; gap:8px; transition:border-color .2s}
 .stat .label{font-size:11.5px; letter-spacing:.1em; color:#6f7d8a}
-.stat strong{font-family:var(--mono); font-size:20px; font-weight:600}
+.stat strong{font-family:var(--mono); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums}
 .stat.best strong{color:var(--accent-2)}
+.stat.flash{border-color:rgba(255,179,71,.6)}
 .btns{display:flex; gap:8px}
 button{
   font-family:inherit; font-size:13px; color:#c6d3de; background:var(--panel);
@@ -43,8 +44,16 @@ button{
 button:hover:not(:disabled){border-color:rgba(255,179,71,.45); color:var(--ink)}
 button:disabled{opacity:.35; cursor:default}
 button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
+.goal{
+  width:min(100%,460px); margin:0 0 12px; padding:9px 13px;
+  border-left:2px solid rgba(255,179,71,.5); background:rgba(18,23,28,.6);
+  font-size:12.5px; color:#8b98a5; line-height:1.6;
+}
+.goal b{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--accent-2); margin-right:8px}
+
 .stage{position:relative; width:min(100%,460px)}
 .board{
+  position:relative;
   display:grid; grid-template-columns:repeat(4,1fr); gap:8px; padding:8px;
   background:var(--panel); border:1px solid var(--line); border-radius:16px;
   touch-action:none; user-select:none; -webkit-user-select:none;
@@ -71,57 +80,98 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 .tile[data-v="1024"]{background:#ffd166; color:#2a2208}
 .tile[data-v="2048"]{background:linear-gradient(145deg,#ffe08a,#ffb347); color:#2a2208; box-shadow:0 0 22px rgba(255,179,71,.45)}
 .tile[data-v="big"]{background:#3a2a10; color:#ffd166}
+.tile.lit{background:#1e2b34; box-shadow:inset 0 0 0 1px rgba(255,179,71,.35)}
 
-.pop{animation:pop .18s ease-out}
-@keyframes pop{from{transform:scale(.72); opacity:.55} to{transform:scale(1); opacity:1}}
-.bump{animation:bump .16s ease-out}
-@keyframes bump{0%{transform:scale(1)} 45%{transform:scale(.92)} 100%{transform:scale(1)}}
+.pop{animation:pop .2s ease-out}
+@keyframes pop{from{transform:scale(.66); opacity:.4} 60%{transform:scale(1.06)} to{transform:scale(1); opacity:1}}
+.bump{animation:bump .18s ease-out}
+@keyframes bump{0%{transform:scale(1)} 42%{transform:scale(.9)} 100%{transform:scale(1)}}
+
+.fx{position:absolute; inset:0; pointer-events:none; z-index:2}
+.board.shake{animation:shake .3s ease-out}
+@keyframes shake{
+  0%{transform:translate(0,0)} 18%{transform:translate(calc(var(--amp,-2px)*1.6),calc(var(--amp,-2px)*-.9))}
+  38%{transform:translate(calc(var(--amp,-2px)*-1.3),calc(var(--amp,-2px)*.7))}
+  58%{transform:translate(calc(var(--amp,-2px)*.8),calc(var(--amp,-2px)*-.4))}
+  78%{transform:translate(calc(var(--amp,-2px)*-.4),0)} 100%{transform:translate(0,0)}
+}
+.board.winflash{animation:winflash .9s ease-out}
+@keyframes winflash{
+  0%{box-shadow:0 0 0 0 rgba(255,179,71,0); border-color:var(--line)}
+  35%{box-shadow:0 0 0 3px rgba(255,179,71,.75),0 0 42px rgba(255,179,71,.5); border-color:#ffd166}
+  100%{box-shadow:0 0 0 0 rgba(255,179,71,0); border-color:var(--line)}
+}
+
+.meta{width:min(100%,460px); display:flex; gap:18px; margin:10px 0 0; font-size:12px; color:#5c6772}
+.meta span b{font-family:var(--mono); color:#9fb0bd; font-weight:600}
+.meta .live{margin-left:auto; font-family:var(--mono); letter-spacing:.1em; color:#4d5a66}
 
 .overlay{
-  position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:12px;
-  padding:26px; text-align:center; border-radius:16px; background:rgba(8,11,14,.84);
-  backdrop-filter:blur(3px); -webkit-backdrop-filter:blur(3px);
+  position:absolute; inset:0; display:none; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  padding:18px 20px; text-align:center; border-radius:16px; background:rgba(8,11,14,.9);
+  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); z-index:3;
 }
 .overlay.show{display:flex}
-.overlay h2{margin:0; font-size:clamp(20px,5.6vw,28px); font-weight:650}
-.overlay p{margin:0; color:var(--dim); font-size:14px; max-width:20em; line-height:1.7}
-.overlay .big{font-family:var(--mono); font-size:40px; color:var(--accent-2); line-height:1}
-.overlay button{height:40px; background:rgba(255,179,71,.14); border-color:rgba(255,179,71,.5); color:#ffe9c9}
+.rank{font-family:var(--mono); font-size:clamp(22px,7vw,34px); font-weight:700; letter-spacing:.06em; line-height:1}
+.rank.god{color:#ffd166; text-shadow:0 0 26px rgba(255,209,102,.6)}
+.rank.inv{color:var(--accent); text-shadow:0 0 20px rgba(53,224,200,.45)}
+.rank.str{color:#9fd2ff}
+.rank.sol{color:#c6d3de}
+.rank.warm{color:#8b98a5}
+.rankcn{font-size:11.5px; letter-spacing:.14em; color:#6f7d8a; margin-bottom:2px}
+.overlay h2{margin:0; font-size:clamp(18px,5vw,24px); font-weight:650}
+.grid4{display:grid; grid-template-columns:repeat(4,1fr); gap:6px; width:100%; margin:6px 0 2px}
+.grid4 div{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:9px; padding:7px 4px}
+.grid4 span{display:block; font-size:10.5px; letter-spacing:.08em; color:#6f7d8a}
+.grid4 b{display:block; font-family:var(--mono); font-size:15px; margin-top:3px; color:#dfe9f2; font-weight:600}
+.tbl{width:100%; margin-top:4px; font-family:var(--mono); font-size:11px}
+.tbl .row{display:grid; grid-template-columns:20px 1fr 40px 52px; gap:6px; align-items:baseline; padding:3px 6px; border-radius:6px; color:#7b8894}
+.tbl .row.head{color:#556370; font-size:10px; letter-spacing:.08em}
+.tbl .row.now{background:rgba(255,179,71,.12); color:#ffe9c9}
+.tbl .row i{font-style:normal; color:#556370}
+.tbl .row .s{text-align:right}
+.overlay button{height:38px; margin-top:8px; background:rgba(255,179,71,.14); border-color:rgba(255,179,71,.5); color:#ffe9c9}
+
 .hint{width:min(100%,460px); margin:14px 0 0; color:#5c6772; font-size:12.5px; line-height:1.7; text-align:center}
-.goal{
-  width:min(100%,460px); margin:0 0 12px; padding:9px 13px;
-  border-left:2px solid rgba(255,179,71,.5); background:rgba(18,23,28,.6);
-  font-size:12.5px; color:#8b98a5; line-height:1.6;
-}
-.goal b{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--accent-2); margin-right:8px}
-@media (max-width:420px){ .board{gap:6px; padding:6px} .tile{border-radius:9px} }
-@media (prefers-reduced-motion:reduce){ *{animation:none!important; transition:none!important} }
+@media (max-width:420px){ .board{gap:6px; padding:6px} .tile{border-radius:9px} .grid4{grid-template-columns:repeat(2,1fr)} }
+@media (prefers-reduced-motion:reduce){ *{animation-duration:.01ms!important; transition-duration:.01ms!important} }
 </style>
 </head>
 <body>
 
 <div class="bar">
   <a class="back" href="../index.html">← 返回</a>
-  <span class="title">2048</span>
+  <span class="title">2048 · Pro Max</span>
 </div>
 
 <div class="hud">
-  <div class="stat"><span class="label">分数</span><strong id="score">0</strong></div>
+  <div class="stat" id="scoreBox"><span class="label">分数</span><strong id="score">0</strong></div>
   <div class="stat best"><span class="label">最高</span><strong id="best">0</strong></div>
   <div class="btns">
-    <button id="newBtn" type="button">重开</button>
+    <button id="newBtn" type="button">开始</button>
+    <button id="soundBtn" type="button">音效 开</button>
   </div>
 </div>
 
-<p class="goal"><b>目标</b>凑出 2048。已填满且四个方向都合不动，这局才算结束。</p>
+<p class="goal"><b>目标</b>凑出 2048。填满且四个方向都合不动才结束，结束给评级。</p>
 
-<div class="stage">
+<div class="stage" id="stage">
   <div class="board" id="board" aria-label="2048 棋盘"></div>
+  <canvas class="fx" id="fx"></canvas>
   <div class="overlay" id="overlay">
+    <div class="rank" id="ovRank"></div>
+    <div class="rankcn" id="ovRankCn"></div>
     <h2 id="ovTitle"></h2>
-    <div id="ovBody"></div>
+    <div class="grid4" id="ovStats"></div>
+    <div class="tbl" id="ovRuns"></div>
     <button id="ovBtn" type="button">再来一局</button>
   </div>
+</div>
+
+<div class="meta">
+  <span>最大块 <b id="mxEl">2</b></span>
+  <span>步数 <b id="mvEl">0</b></span>
+  <span class="live" id="liveEl">就绪</span>
 </div>
 
 <p class="hint">方向键 / WASD 滑动合并，相同数字只能合并一次。手机直接在棋盘上滑。</p>
@@ -132,38 +182,245 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   var SIZE = 4;
   var BEST_KEY = 'paly.g2048.best';
+  var RUNS_KEY = 'paly.g2048.runs';
+  var SOUND_KEY = 'paly.g2048.sound';
+
+  var stage = document.getElementById('stage');
   var board = document.getElementById('board');
+  var fx = document.getElementById('fx');
+  var ctx = fx.getContext('2d');
   var scoreEl = document.getElementById('score');
+  var scoreBox = document.getElementById('scoreBox');
   var bestEl = document.getElementById('best');
   var newBtn = document.getElementById('newBtn');
+  var soundBtn = document.getElementById('soundBtn');
   var overlay = document.getElementById('overlay');
+  var ovRank = document.getElementById('ovRank');
+  var ovRankCn = document.getElementById('ovRankCn');
   var ovTitle = document.getElementById('ovTitle');
-  var ovBody = document.getElementById('ovBody');
+  var ovStats = document.getElementById('ovStats');
+  var ovRuns = document.getElementById('ovRuns');
   var ovBtn = document.getElementById('ovBtn');
+  var mxEl = document.getElementById('mxEl');
+  var mvEl = document.getElementById('mvEl');
+  var liveEl = document.getElementById('liveEl');
 
   var tiles = [];
-  var grid, score, best, state, winShown;
+  var grid, score, best, state, winShown, moves, startedAt, lastRun;
 
   for (var i = 0; i < SIZE * SIZE; i++) {
     var t = document.createElement('div');
     t.className = 'tile';
+    t.dataset.v = '0';
     board.appendChild(t);
     tiles.push(t);
+  }
+
+  /* ---------- 音效：现场合成，零文件 ---------- */
+  var AC = null, soundOn = true;
+  try {
+    var sflag = localStorage.getItem(SOUND_KEY);
+    if (sflag === '0') soundOn = false;
+  } catch (e) {}
+
+  function renderSoundBtn() { soundBtn.textContent = '音效 ' + (soundOn ? '开' : '关'); }
+  renderSoundBtn();
+
+  function ac() {
+    if (!AC) {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      AC = new C();
+    }
+    if (AC.state === 'suspended') { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+
+  function tone(freq, dur, type, vol, delay, glideTo) {
+    if (!soundOn) return;
+    var a = ac(); if (!a) return;
+    var t0 = a.currentTime + (delay || 0);
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (glideTo) { try { o.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur); } catch (e) {} }
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(vol, t0 + Math.min(dur * 0.35, 0.03));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.03);
+  }
+
+  function sfxScan(i) { tone(380 + i * 16, 0.05, 'square', 0.035); }
+  function sfxSlide() { tone(150, 0.07, 'sine', 0.05, 0, 108); }
+  function sfxSpawn() { tone(680, 0.06, 'triangle', 0.05); }
+  function sfxMerge(v, k) {
+    var lv = Math.log2(v);
+    var f = Math.min(300 + lv * 52, 900);
+    tone(f, 0.19, 'triangle', 0.13, (k || 0) * 0.035);
+    if (v >= 32) tone(f * 1.5, 0.16, 'sine', 0.075, (k || 0) * 0.035 + 0.02);
+    if (v >= 256) tone(f * 0.5, 0.24, 'sine', 0.09, (k || 0) * 0.035 + 0.04);
+  }
+  function sfxWin() {
+    var notes = [523, 659, 784, 1046, 1318];
+    for (var i = 0; i < notes.length; i++) tone(notes[i], 0.3, 'triangle', 0.11, i * 0.1);
+  }
+  function sfxBest() {
+    tone(880, 0.16, 'sine', 0.1);
+    tone(1320, 0.2, 'sine', 0.085, 0.13);
+  }
+  function sfxOver() {
+    tone(240, 0.5, 'sawtooth', 0.09, 0, 120);
+    tone(120, 0.5, 'sine', 0.08, 0.1, 62);
+  }
+
+  /* ---------- 开局扫描仪式 ---------- */
+  var introTimers = [];
+  function clearIntro() {
+    for (var i = 0; i < introTimers.length; i++) clearTimeout(introTimers[i]);
+    introTimers = [];
+  }
+
+  /* ---------- 粒子层 ---------- */
+  var dpr = window.devicePixelRatio || 1;
+  var cw = 0, ch = 0;
+  var parts = [], floats = [], raf = 0, lastT = 0;
+
+  function sizeFx() {
+    var r = stage.getBoundingClientRect();
+    cw = r.width; ch = r.height;
+    fx.width = Math.max(1, Math.round(cw * dpr));
+    fx.height = Math.max(1, Math.round(ch * dpr));
+    fx.style.width = cw + 'px';
+    fx.style.height = ch + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function tileCenter(r, c) {
+    var el = tiles[r * SIZE + c];
+    return { x: el.offsetLeft + el.offsetWidth / 2, y: el.offsetTop + el.offsetHeight / 2 };
+  }
+
+  function burst(x, y, val) {
+    var lv = Math.log2(val);
+    var n = Math.min(26, 5 + Math.round(lv * 1.7));
+    var hot = val >= 128;
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2, sp = 14 + Math.random() * 52;
+      parts.push({
+        x: x, y: y,
+        vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 16,
+        life: 0, ttl: 0.42 + Math.random() * 0.42,
+        size: 1.4 + Math.random() * 2.2,
+        c: hot ? (Math.random() < 0.55 ? '#7ff0dc' : '#ffd166')
+               : (Math.random() < 0.62 ? '#ffb347' : '#ffe9c9')
+      });
+    }
+    if (parts.length > 260) parts.splice(0, parts.length - 260);
+    kick();
+  }
+
+  function floatText(x, y, text, color) {
+    floats.push({ x: x, y: y, text: text, c: color || '#ffe9c9', life: 0, ttl: 0.8 });
+    kick();
+  }
+
+  function kick() {
+    if (!raf) { lastT = 0; raf = requestAnimationFrame(tick); }
+  }
+
+  function tick(ts) {
+    if (!lastT) lastT = ts;
+    var dt = Math.min(0.06, (ts - lastT) / 1000);
+    lastT = ts;
+    ctx.clearRect(0, 0, cw, ch);
+
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var p = parts[i];
+      p.life += dt;
+      if (p.life >= p.ttl) { parts.splice(i, 1); continue; }
+      p.vy += 128 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      var k = 1 - p.life / p.ttl;
+      ctx.globalAlpha = Math.max(0, k * k);
+      ctx.fillStyle = p.c;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * (0.5 + k * 0.7), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    for (var j = floats.length - 1; j >= 0; j--) {
+      var f = floats[j];
+      f.life += dt;
+      if (f.life >= f.ttl) { floats.splice(j, 1); continue; }
+      var kk = 1 - f.life / f.ttl;
+      ctx.globalAlpha = Math.min(1, kk * 1.6);
+      ctx.fillStyle = f.c;
+      ctx.font = '600 13px ui-monospace,Consolas,monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(f.text, f.x, f.y - (1 - kk) * 34);
+    }
+    ctx.globalAlpha = 1;
+
+    if (parts.length || floats.length) raf = requestAnimationFrame(tick);
+    else { raf = 0; ctx.clearRect(0, 0, cw, ch); }
+  }
+
+  function shakeBoard(amp) {
+    board.style.setProperty('--amp', (-amp) + 'px');
+    board.classList.remove('shake');
+    void board.offsetWidth;
+    board.classList.add('shake');
+  }
+
+  /* ---------- 存档 ---------- */
+  function readRuns() {
+    try {
+      var raw = localStorage.getItem(RUNS_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (x) { return x && typeof x.s === 'number'; })
+                .sort(function (a, b) { return b.s - a.s; })
+                .slice(0, 5);
+    } catch (e) { return []; }
+  }
+
+  function writeRuns(list) {
+    try { localStorage.setItem(RUNS_KEY, JSON.stringify(list.slice(0, 5))); } catch (e) {}
+  }
+
+  function pushRun(run) {
+    var list = readRuns();
+    list.push(run);
+    list.sort(function (a, b) { return b.s - a.s; });
+    list = list.slice(0, 5);
+    writeRuns(list);
+    return list;
   }
 
   best = 0;
   try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) { best = 0; }
   bestEl.textContent = best;
 
+  /* ---------- 评级 ---------- */
+  function rankOf(mx, sc) {
+    if (mx >= 2048 && sc >= 16000) return { k: 'god', n: 'GODLIKE', cn: '神级操作' };
+    if (mx >= 2048) return { k: 'inv', n: 'INVINCIBLE', cn: '不可战胜' };
+    if (mx >= 512) return { k: 'str', n: 'STRONG', cn: '有硬实力' };
+    if (mx >= 128) return { k: 'sol', n: 'SOLID', cn: '稳得住' };
+    return { k: 'warm', n: 'WARMUP', cn: '热身而已' };
+  }
+
+  /* ---------- 棋盘逻辑 ---------- */
   function emptyGrid() {
     var g = [];
     for (var r = 0; r < SIZE; r++) g.push([0, 0, 0, 0]);
     return g;
   }
 
-  function cloneGrid(g) {
-    return g.map(function (row) { return row.slice(); });
-  }
+  function cloneGrid(g) { return g.map(function (row) { return row.slice(); }); }
 
   function emptyCells() {
     var list = [];
@@ -183,11 +440,19 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   function updateScore() {
     scoreEl.textContent = score;
+    scoreBox.classList.add('flash');
+    setTimeout(function () { scoreBox.classList.remove('flash'); }, 260);
     if (score > best) {
       best = score;
       bestEl.textContent = best;
       try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
     }
+  }
+
+  function updateMeta() {
+    var mx = maxTile();
+    mxEl.textContent = mx;
+    mvEl.textContent = moves;
   }
 
   function render(prev, popAt) {
@@ -204,7 +469,6 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       el.classList.remove('bump');
 
       if (popAt && popAt.r === r && popAt.c === c && v) {
-        // 强制重排以重启动画
         void el.offsetWidth;
         el.classList.add('pop');
       } else if (prev && v && v !== before) {
@@ -217,10 +481,11 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     var vals = row.filter(function (v) { return v !== 0; });
     var out = [];
     var gained = 0;
+    var merges = [];
     for (var i = 0; i < vals.length; i++) {
-      // 只合并一次：合并后跳过下一个
       if (i + 1 < vals.length && vals[i] === vals[i + 1]) {
         out.push(vals[i] * 2);
+        merges.push({ i: out.length - 1, v: vals[i] * 2 });
         gained += vals[i] * 2;
         i++;
       } else {
@@ -228,7 +493,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       }
     }
     while (out.length < SIZE) out.push(0);
-    return { row: out, gained: gained };
+    return { row: out, gained: gained, merges: merges };
   }
 
   function sameGrid(a, b) {
@@ -242,6 +507,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     if (state !== 'playing') return;
     var before = cloneGrid(grid);
     var gainedAll = 0;
+    var hits = [];
 
     if (dir === 'left' || dir === 'right') {
       for (var r = 0; r < SIZE; r++) {
@@ -252,26 +518,47 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
         if (dir === 'right') out.reverse();
         grid[r] = out;
         gainedAll += res.gained;
+        for (var m = 0; m < res.merges.length; m++) {
+          hits.push({ r: r, c: (dir === 'right' ? SIZE - 1 - res.merges[m].i : res.merges[m].i), v: res.merges[m].v });
+        }
       }
     } else {
-      for (var c = 0; c < SIZE; c++) {
-        var col = [grid[0][c], grid[1][c], grid[2][c], grid[3][c]];
+      for (var c2 = 0; c2 < SIZE; c2++) {
+        var col = [grid[0][c2], grid[1][c2], grid[2][c2], grid[3][c2]];
         if (dir === 'down') col.reverse();
         var res2 = slideRow(col);
         var out2 = res2.row;
         if (dir === 'down') out2.reverse();
-        for (var r2 = 0; r2 < SIZE; r2++) grid[r2][c] = out2[r2];
+        for (var r2 = 0; r2 < SIZE; r2++) grid[r2][c2] = out2[r2];
         gainedAll += res2.gained;
+        for (var m2 = 0; m2 < res2.merges.length; m2++) {
+          hits.push({ r: (dir === 'down' ? SIZE - 1 - res2.merges[m2].i : res2.merges[m2].i), c: c2, v: res2.merges[m2].v });
+        }
       }
     }
 
-    if (sameGrid(before, grid)) return;   // 没有移动就不生成新格
+    if (sameGrid(before, grid)) return;
 
-    score += gainedAll;
-    updateScore();
+    moves++;
+    if (gainedAll) { score += gainedAll; updateScore(); }
+    else sfxSlide();
 
     var popAt = addRandom();
     render(before, popAt);
+    if (popAt) sfxSpawn();
+    updateMeta();
+
+    for (var h = 0; h < hits.length; h++) {
+      var pt = tileCenter(hits[h].r, hits[h].c);
+      burst(pt.x, pt.y, hits[h].v);
+      floatText(pt.x, pt.y - 6, '+' + hits[h].v, hits[h].v >= 128 ? '#7ff0dc' : '#ffe9c9');
+      sfxMerge(hits[h].v, h);
+    }
+    if (hits.length) {
+      var top = hits[0].v;
+      shakeBoard(Math.min(7, 1.6 + Math.log2(top) * 0.8));
+    }
+
     checkState();
   }
 
@@ -293,39 +580,141 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     return m;
   }
 
+  function elapsedSec() { return Math.max(0, Math.round((Date.now() - startedAt) / 1000)); }
+
+  function fmtDur(sec) {
+    var mm = Math.floor(sec / 60), ss = sec % 60;
+    return mm + ':' + (ss < 10 ? '0' : '') + ss;
+  }
+
   function checkState() {
-    var m = maxTile();
-    if (m >= 2048 && !winShown) {
+    var mx = maxTile();
+    if (mx >= 2048 && !winShown) {
       winShown = true;
-      showOverlay('凑到 2048 了', '<div class="big">2048</div><p>可以收手，也可以接着往上堆。当前分数 ' + score + '。</p>', '继续玩');
       state = 'won';
+      liveEl.textContent = '2048 到手';
+      board.classList.remove('winflash');
+      void board.offsetWidth;
+      board.classList.add('winflash');
+      sfxWin();
+      var mid = tileCenter(1, 1);
+      for (var burstN = 0; burstN < 6; burstN++) {
+        var cell = emptyCells();
+        var spot = cell.length ? cell[Math.floor(Math.random() * cell.length)] : { r: 1, c: 1 };
+        var p = tileCenter(spot.r, spot.c);
+        burst(p.x, p.y, 512);
+      }
+      showWin('凑到 2048 了', 2048, score);
       return;
     }
     if (!hasMoves()) {
       state = 'over';
-      showOverlay('走不动了', '<div class="big">' + score + '</div><p>没有空格也没有能合并的邻居。最高纪录 ' + best + '。</p>', '再来一局');
+      liveEl.textContent = '结束';
+      sfxOver();
+      endGame();
+    } else {
+      liveEl.textContent = '进行中';
     }
   }
 
-  function showOverlay(title, bodyHtml, btnText) {
+  function recordRun() {
+    var run = {
+      s: score, mx: maxTile(), mv: moves, ms: elapsedSec(),
+      at: Date.now(), id: Date.now() + '-' + Math.random().toString(36).slice(2, 8)
+    };
+    return { run: run, list: pushRun(run) };
+  }
+
+  function renderRuns(list, runId) {
+    var html = '<div class="row head"><i>#</i><span>分数</span><span>最大块</span><span class="s">步数</span></div>';
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      html += '<div class="row' + (runId && r.id === runId ? ' now' : '') + '">' +
+        '<i>' + (i + 1) + '</i><span>' + r.s + '</span>' +
+        '<span>' + r.mx + '</span><span class="s">' + r.mv + '</span></div>';
+    }
+    ovRuns.innerHTML = html;
+  }
+
+  function showRank(rk) {
+    ovRank.className = 'rank ' + rk.k;
+    ovRank.textContent = rk.n;
+    ovRankCn.textContent = rk.cn;
+  }
+
+  function showStats(scoreV, mx, mv, ms) {
+    ovStats.innerHTML =
+      '<div><span>分数</span><b>' + scoreV + '</b></div>' +
+      '<div><span>最大块</span><b>' + mx + '</b></div>' +
+      '<div><span>步数</span><b>' + mv + '</b></div>' +
+      '<div><span>用时</span><b>' + fmtDur(ms) + '</b></div>';
+  }
+
+  function showWin(title, mx, sc) {
+    showRank(rankOf(mx, sc));
     ovTitle.textContent = title;
-    ovBody.innerHTML = bodyHtml;
-    ovBtn.textContent = btnText;
+    showStats(sc, mx, moves, elapsedSec());
+    renderRuns(readRuns(), null);
+    ovBtn.textContent = '接着往上堆';
     overlay.classList.add('show');
+  }
+
+  function endGame() {
+    var rec = recordRun();
+    var rk = rankOf(rec.run.mx, rec.run.s);
+    var isBest = rec.run.s > 0 && rec.run.s === best && rec.list[0] && rec.list[0].id === rec.run.id;
+    showRank(rk);
+    ovTitle.textContent = isBest ? '走不动了 · 新纪录' : '走不动了';
+    showStats(rec.run.s, rec.run.mx, rec.run.mv, rec.run.ms);
+    renderRuns(rec.list, rec.run.id);
+    ovBtn.textContent = '再来一局';
+    overlay.classList.add('show');
+    if (isBest) sfxBest();
   }
 
   function hideOverlay() { overlay.classList.remove('show'); }
 
+  /* ---------- 开局 ---------- */
   function startNew() {
+    clearIntro();
+    sizeFx();
     grid = emptyGrid();
     score = 0;
-    state = 'playing';
+    moves = 0;
+    state = 'intro';
     winShown = false;
-    addRandom();
-    addRandom();
+    startedAt = Date.now();
     scoreEl.textContent = '0';
     hideOverlay();
     render(null, null);
+    updateMeta();
+    liveEl.textContent = '发牌';
+    newBtn.textContent = '重开';
+
+    // 16 格逐格扫亮，然后落两子
+    for (var i = 0; i < tiles.length; i++) {
+      (function (idx) {
+        var tm = setTimeout(function () {
+          tiles[idx].classList.add('lit');
+          if (idx % 4 === 0 || soundOn) sfxScan(idx);
+          setTimeout(function () { tiles[idx].classList.remove('lit'); }, 150);
+        }, idx * 24);
+        introTimers.push(tm);
+      })(i);
+    }
+
+    var tEnd = setTimeout(function () {
+      var a = addRandom();
+      var b = addRandom();
+      render(null, b);
+      if (a) { void tiles[a.r * SIZE + a.c].offsetWidth; tiles[a.r * SIZE + a.c].classList.add('pop'); }
+      sfxSpawn();
+      tone(760, 0.12, 'triangle', 0.07, 0.05);
+      state = 'playing';
+      liveEl.textContent = '进行中';
+      updateMeta();
+    }, tiles.length * 24 + 220);
+    introTimers.push(tEnd);
   }
 
   var KEYMAP = {
@@ -364,10 +753,25 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   }, { passive: false });
 
   newBtn.addEventListener('click', startNew);
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn;
+    renderSoundBtn();
+    try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch (e) {}
+    if (soundOn) tone(720, 0.1, 'triangle', 0.06);
+  });
+
   ovBtn.addEventListener('click', function () {
-    if (state === 'won') { state = 'playing'; hideOverlay(); return; }
+    if (state === 'won') {
+      state = 'playing';
+      startedAt = Date.now() - (elapsedSec() * 1000);
+      hideOverlay();
+      liveEl.textContent = '进行中';
+      return;
+    }
     startNew();
   });
+
+  window.addEventListener('resize', function () { sizeFx(); });
 
   startNew();
 })();

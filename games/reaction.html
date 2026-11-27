@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>反应测试 · paly</title>
+<title>反应测试 · Pro Max</title>
 <meta name="theme-color" content="#0b0e11">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><circle cx='16' cy='16' r='6' fill='none' stroke='%2335e0c8' stroke-width='2'/><path d='M16 8v4' stroke='%23ffb347' stroke-width='2'/></svg>">
 <style>
@@ -30,12 +30,21 @@ body{
 .title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase}
 .hud{width:min(100%,460px); display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin-bottom:12px}
 .stat{
-  flex:1 1 88px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);
+  flex:1 1 80px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);
   display:flex; align-items:baseline; justify-content:space-between; gap:8px;
 }
 .stat .label{font-size:11.5px; letter-spacing:.1em; color:#6f7d8a; white-space:nowrap}
-.stat strong{font-family:var(--mono); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums}
+.stat strong{font-family:var(--mono); font-size:19px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap}
 .stat.best strong{color:var(--accent-2)}
+.stat.avg strong{color:#9fd2ff}
+.btns{display:flex; gap:8px}
+button{
+  font-family:inherit; font-size:13px; color:#c6d3de; background:var(--panel);
+  border:1px solid var(--line); border-radius:12px; padding:0 13px; cursor:pointer;
+  transition:border-color .18s,color .18s,opacity .18s;-webkit-tap-highlight-color:transparent;
+}
+button:hover:not(:disabled){border-color:rgba(53,224,200,.45); color:var(--ink)}
+button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 .goal{
   width:min(100%,460px); margin:0 0 12px; padding:9px 13px;
   border-left:2px solid rgba(255,179,71,.5); background:rgba(18,23,28,.6);
@@ -43,97 +52,372 @@ body{
 }
 .goal b{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--accent-2); margin-right:8px}
 
+.stage{position:relative; width:min(100%,460px)}
 .pad{
-  width:min(100%,460px); height:min(58vh,340px); min-height:240px;
+  position:relative; height:min(60vh,352px); min-height:252px; overflow:hidden;
   border:1px solid var(--line); border-radius:16px; background:#12171c;
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
-  text-align:center; padding:24px; cursor:pointer; user-select:none; -webkit-user-select:none;
-  transition:background .18s, border-color .18s;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+  text-align:center; padding:22px; cursor:pointer; user-select:none; -webkit-user-select:none;
+  transition:background .16s, border-color .16s, box-shadow .16s;
   -webkit-tap-highlight-color:transparent;
 }
 .pad:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 .pad.waiting{background:#171d24; border-color:#2a343d}
-.pad.armed{background:#10312c; border-color:rgba(53,224,200,.6)}
-.pad.result{background:#141a20; border-color:rgba(53,224,200,.35)}
-.pad.foul{background:#2a1a16; border-color:rgba(255,120,90,.45)}
-
-.pad .main{font-size:clamp(24px,7vw,40px); font-weight:650; line-height:1.2; margin:0}
-.pad .sub{margin:0; font-size:14px; color:#8b98a5; max-width:24em; line-height:1.6}
-.pad .ms{font-family:var(--mono); font-size:clamp(44px,13vw,72px); font-weight:600; line-height:1; color:var(--accent); font-variant-numeric:tabular-nums}
-.pad .ms span{font-size:22px; margin-left:4px; color:#7b8894}
-.pad .grade{font-family:var(--mono); font-size:13px; letter-spacing:.16em; color:var(--accent-2)}
-.pad.foul .ms{color:#ff8a6b}
-.pad .retry{
-  margin-top:6px; font-family:var(--mono); font-size:11.5px; letter-spacing:.12em; color:#6f7d8a;
+.pad.waiting::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(circle at 50% 55%,rgba(255,120,90,.1),transparent 62%);
+  animation:breathe 2.2s ease-in-out infinite;
 }
+@keyframes breathe{0%,100%{opacity:.45} 50%{opacity:1}}
+.pad.armed{background:#0d3a33; border-color:rgba(53,224,200,.75); box-shadow:0 0 0 3px rgba(53,224,200,.18),0 0 46px rgba(53,224,200,.3)}
+.pad.result{background:#131a20; border-color:rgba(53,224,200,.4)}
+.pad.foul{background:#2a1512; border-color:rgba(255,120,90,.55)}
+.pad.foul::after{
+  content:''; position:absolute; inset:0; pointer-events:none;
+  background:radial-gradient(circle at 50% 50%,rgba(255,90,60,.22),transparent 68%);
+}
+.pad.shake{animation:pshake .34s ease-out}
+@keyframes pshake{0%{transform:translate(0)}15%{transform:translate(-7px,3px)}32%{transform:translate(6px,-3px)}50%{transform:translate(-4px,2px)}70%{transform:translate(3px,-1px)}100%{transform:translate(0)}}
+
+.fx{position:absolute; inset:0; pointer-events:none; z-index:1}
+.inner{position:relative; z-index:2; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; width:100%}
+
+.cd{font-family:var(--mono); font-size:clamp(64px,22vw,104px); font-weight:700; line-height:1; color:#ffd166; text-shadow:0 0 40px rgba(255,209,102,.5); display:none}
+.cd.on{display:block; animation:cdin .3s ease-out}
+@keyframes cdin{from{transform:scale(1.5); opacity:.2} to{transform:scale(1); opacity:1}}
+
+.main{font-size:clamp(26px,7.4vw,42px); font-weight:650; line-height:1.2; margin:0}
+.sub{margin:0; font-size:13.5px; color:#8b98a5; max-width:24em; line-height:1.6}
+.sub p{margin:0}
+.ms{font-family:var(--mono); font-size:clamp(46px,14vw,78px); font-weight:600; line-height:1; font-variant-numeric:tabular-nums; color:var(--accent); margin:0}
+.ms span{font-size:22px; margin-left:4px; color:#7b8894}
+.rank{font-family:var(--mono); font-size:13px; letter-spacing:.18em; font-weight:700; margin:0}
+.rank.god{color:#ffd166; text-shadow:0 0 18px rgba(255,209,102,.5)}
+.rank.inv{color:var(--accent)}
+.rank.str{color:#9fd2ff}
+.rank.sol{color:#c6d3de}
+.rank.warm{color:#8b98a5}
+.rank em{font-style:normal; color:#6f7d8a; letter-spacing:.06em; font-weight:400; margin-left:8px}
+.pad.foul .ms{color:#ff8a6b}
+
+.gauge{width:min(100%,330px); margin-top:6px}
+.gauge .track{
+  position:relative; height:9px; border-radius:5px; overflow:hidden;
+  background:linear-gradient(90deg,
+    rgba(53,224,200,.5) 0 37.5%,
+    rgba(53,224,200,.26) 37.5% 50%,
+    rgba(255,179,71,.26) 50% 65%,
+    rgba(255,179,71,.14) 65% 87.5%,
+    rgba(255,120,90,.16) 87.5% 100%);
+  border:1px solid rgba(255,255,255,.07);
+}
+.gauge .me{
+  position:absolute; top:-4px; width:3px; height:17px; border-radius:2px;
+  background:#fff; box-shadow:0 0 10px rgba(255,255,255,.8); transform:translateX(-50%);
+}
+.gauge .scale{display:flex; justify-content:space-between; margin-top:5px; font-family:var(--mono); font-size:9.5px; color:#556370}
+
+.rec{width:min(100%,300px); margin-top:6px; font-family:var(--mono); font-size:11px}
+.rec .row{display:grid; grid-template-columns:20px 1fr 86px; gap:6px; padding:2px 6px; border-radius:6px; color:#7b8894}
+.rec .row.head{color:#556370; font-size:10px; letter-spacing:.08em}
+.rec .row.now{background:rgba(53,224,200,.12); color:#bff7ee}
+.rec .row i{font-style:normal; color:#556370}
+.rec .row span:last-child{text-align:right}
+.foot{
+  position:absolute; left:0; right:0; bottom:11px; z-index:2; text-align:center;
+  font-family:var(--mono); font-size:10.5px; letter-spacing:.1em; color:#4a5763; pointer-events:none;
+}
+
 .hint{width:min(100%,460px); margin:14px 0 0; color:#5c6772; font-size:12.5px; line-height:1.7; text-align:center}
-@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+.flash{position:fixed; inset:0; pointer-events:none; z-index:9; opacity:0}
+.flash.go{animation:fl .42s ease-out}
+.flash.bad{animation:flr .4s ease-out}
+@keyframes fl{0%{opacity:0; background:rgba(53,224,200,.55)}22%{opacity:.5}100%{opacity:0; background:rgba(53,224,200,.55)}}
+@keyframes flr{0%{opacity:0; background:rgba(255,90,60,.5)}22%{opacity:.45}100%{opacity:0; background:rgba(255,90,60,.5)}}
+@media (prefers-reduced-motion:reduce){ *{animation-duration:.01ms!important; transition-duration:.01ms!important} }
 </style>
 </head>
 <body>
 
 <div class="bar">
   <a class="back" href="../index.html">← 返回</a>
-  <span class="title">Reaction</span>
+  <span class="title">Reaction · Pro Max</span>
 </div>
 
 <div class="hud">
   <div class="stat"><span class="label">这次</span><strong id="now">—</strong></div>
   <div class="stat best"><span class="label">最快</span><strong id="best">—</strong></div>
+  <div class="stat avg"><span class="label">均速</span><strong id="avg">—</strong></div>
+  <div class="btns">
+    <button id="goBtn" type="button">开始</button>
+    <button id="soundBtn" type="button">音效 开</button>
+  </div>
 </div>
 
 <p class="goal"><b>目标</b>屏幕变绿的那一下点下去，测你反应多少毫秒。绿色之前点算抢跑。</p>
 
-<div class="pad waiting" id="pad" role="button" tabindex="0" aria-live="polite">
-  <div class="main" id="mainText">等它变绿</div>
-  <div class="sub" id="subText">点一下开始，之后别急着点。</div>
+<div class="stage" id="stage">
+  <div class="pad" id="pad" role="button" tabindex="0">
+    <canvas class="fx" id="fx"></canvas>
+    <div class="inner">
+      <div class="cd" id="cd">3</div>
+      <div class="main" id="mainLine">点一下开始</div>
+      <div class="sub" id="subLine">先 3-2-1，再等它变绿。</div>
+      <div class="gauge" id="gauge" style="display:none">
+        <div class="track"><div class="me" id="gaugeMe" style="left:0"></div></div>
+        <div class="scale"><span>0</span><span>150</span><span>200</span><span>260</span><span>400+</span></div>
+      </div>
+      <div class="rec" id="rec"></div>
+    </div>
+    <div class="foot" id="foot">点一下开始 · 绿色前别动手</div>
+  </div>
 </div>
 
-<p class="hint">点一次就出结果，绿色前点击判抢跑。键盘空格同样可用。</p>
+<p class="hint">点一次就出结果，绿色前点击判抢跑。键盘空格同样可用，R 键直接重开一局。</p>
+
+<div class="flash" id="flash"></div>
 
 <script>
 (function () {
   'use strict';
 
   var BEST_KEY = 'paly.reaction.best';
-  var MIN_WAIT = 1100, MAX_WAIT = 3300;
+  var RUNS_KEY = 'paly.reaction.runs';
+  var SOUND_KEY = 'paly.reaction.sound';
+  var MIN_WAIT = 1100, MAX_WAIT = 3100;
+  var CD_STEP = 340;
 
   var pad = document.getElementById('pad');
-  var mainText = document.getElementById('mainText');
-  var subText = document.getElementById('subText');
+  var fx = document.getElementById('fx');
+  var ctx = fx.getContext('2d');
+  var cdEl = document.getElementById('cd');
+  var mainLine = document.getElementById('mainLine');
+  var subLine = document.getElementById('subLine');
+  var gauge = document.getElementById('gauge');
+  var gaugeMe = document.getElementById('gaugeMe');
+  var recEl = document.getElementById('rec');
+  var foot = document.getElementById('foot');
   var nowEl = document.getElementById('now');
   var bestEl = document.getElementById('best');
+  var avgEl = document.getElementById('avg');
+  var goBtn = document.getElementById('goBtn');
+  var soundBtn = document.getElementById('soundBtn');
+  var flash = document.getElementById('flash');
 
-  var phase = 'idle';          // idle | waiting | armed | result | foul
-  var waitTimer = 0;
-  var armedAt = 0;
+  var phase = 'idle';          // idle | countdown | waiting | armed | result | foul
+  var waitTimer = 0, cdTimer = 0;
+  var armedAt = 0, meterRaf = 0;
   var best = 0;
+  var session = [];            // 本次会话成绩（用于均速）
 
   try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) { best = 0; }
   renderBest();
 
-  function renderBest() {
-    bestEl.textContent = best ? best + ' ms' : '—';
+  /* ---------- 音效 ---------- */
+  var AC = null, soundOn = true;
+  try { if (localStorage.getItem(SOUND_KEY) === '0') soundOn = false; } catch (e) {}
+  function renderSoundBtn() { soundBtn.textContent = '音效 ' + (soundOn ? '开' : '关'); }
+  renderSoundBtn();
+
+  function ac() {
+    if (!AC) {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      AC = new C();
+    }
+    if (AC.state === 'suspended') { try { AC.resume(); } catch (e) {} }
+    return AC;
   }
 
+  function tone(freq, dur, type, vol, delay, glideTo) {
+    if (!soundOn) return;
+    var a = ac(); if (!a) return;
+    var t0 = a.currentTime + (delay || 0);
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (glideTo) { try { o.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur); } catch (e) {} }
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(vol, t0 + Math.min(dur * 0.3, 0.02));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.03);
+  }
+
+  function sfxCd(n) { tone(400 + (3 - n) * 90, 0.1, 'square', 0.055); }
+  function sfxArm() {
+    tone(1240, 0.07, 'square', 0.09);
+    tone(1860, 0.09, 'triangle', 0.06, 0.01);
+  }
+  function sfxTap() { tone(300, 0.05, 'sine', 0.05, 0, 220); }
+  function sfxFoul() {
+    tone(180, 0.28, 'sawtooth', 0.1, 0, 120);
+    tone(90, 0.3, 'square', 0.07, 0.04, 62);
+  }
+  function sfxResult(ms) {
+    if (ms < 150) { tone(1040, 0.14, 'triangle', 0.11); tone(1560, 0.16, 'triangle', 0.09, 0.09); tone(2080, 0.2, 'sine', 0.07, 0.18); }
+    else if (ms < 200) { tone(900, 0.13, 'triangle', 0.1); tone(1300, 0.15, 'sine', 0.075, 0.08); }
+    else if (ms < 260) { tone(720, 0.13, 'triangle', 0.1); tone(960, 0.14, 'sine', 0.06, 0.07); }
+    else if (ms < 350) { tone(560, 0.14, 'triangle', 0.09); }
+    else { tone(400, 0.2, 'sine', 0.08, 0, 300); }
+  }
+  function sfxBest() { tone(880, 0.14, 'sine', 0.1); tone(1320, 0.18, 'sine', 0.08, 0.12); tone(1760, 0.2, 'sine', 0.06, 0.24); }
+
+  /* ---------- 粒子层 ---------- */
+  var dpr = window.devicePixelRatio || 1;
+  var cw = 0, ch = 0, parts = [], raf = 0, lastT = 0;
+
+  function sizeFx() {
+    var r = pad.getBoundingClientRect();
+    cw = r.width; ch = r.height;
+    fx.width = Math.max(1, Math.round(cw * dpr));
+    fx.height = Math.max(1, Math.round(ch * dpr));
+    fx.style.width = cw + 'px';
+    fx.style.height = ch + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function burst(x, y, colorA, colorB, n) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2, sp = 26 + Math.random() * 96;
+      parts.push({
+        x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 28,
+        life: 0, ttl: 0.5 + Math.random() * 0.45,
+        size: 1.6 + Math.random() * 2.6,
+        c: Math.random() < 0.6 ? colorA : colorB
+      });
+    }
+    if (parts.length > 220) parts.splice(0, parts.length - 220);
+    if (!raf) { lastT = 0; raf = requestAnimationFrame(tick); }
+  }
+
+  function tick(ts) {
+    if (!lastT) lastT = ts;
+    var dt = Math.min(0.06, (ts - lastT) / 1000);
+    lastT = ts;
+    ctx.clearRect(0, 0, cw, ch);
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var p = parts[i];
+      p.life += dt;
+      if (p.life >= p.ttl) { parts.splice(i, 1); continue; }
+      p.vy += 150 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      var k = 1 - p.life / p.ttl;
+      ctx.globalAlpha = Math.max(0, k * k);
+      ctx.fillStyle = p.c;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * (0.45 + k * 0.75), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (parts.length) raf = requestAnimationFrame(tick);
+    else { raf = 0; ctx.clearRect(0, 0, cw, ch); }
+  }
+
+  function shakePad() {
+    pad.classList.remove('shake');
+    void pad.offsetWidth;
+    pad.classList.add('shake');
+  }
+
+  function doFlash(kind) {
+    flash.className = 'flash';
+    void flash.offsetWidth;
+    flash.className = 'flash ' + kind;
+  }
+
+  /* ---------- 显示与状态 ---------- */
   function setPhase(p, cls) {
     phase = p;
     pad.className = 'pad ' + cls;
   }
 
-  function grade(ms) {
-    if (ms < 180) return '神反应';
-    if (ms < 250) return '很快';
-    if (ms < 350) return '正常';
-    if (ms < 500) return '偏慢';
-    return '再来一次';
+  function rankOf(ms) {
+    if (ms < 150) return { k: 'god', n: 'GODLIKE', cn: '神级反应' };
+    if (ms < 200) return { k: 'inv', n: 'INVINCIBLE', cn: '几乎打不中' };
+    if (ms < 260) return { k: 'str', n: 'STRONG', cn: '有硬实力' };
+    if (ms < 350) return { k: 'sol', n: 'SOLID', cn: '正常水准' };
+    return { k: 'warm', n: 'WARMUP', cn: '慢半拍' };
   }
 
+  function renderBest() { bestEl.textContent = best ? best + 'ms' : '—'; }
+
+  function renderAvg() {
+    if (!session.length) { avgEl.textContent = '—'; return; }
+    var sum = 0;
+    for (var i = 0; i < session.length; i++) sum += session[i];
+    avgEl.textContent = Math.round(sum / session.length) + 'ms';
+  }
+
+  function readRuns() {
+    try {
+      var raw = localStorage.getItem(RUNS_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (x) { return x && typeof x.ms === 'number'; })
+                .sort(function (a, b) { return a.ms - b.ms; })
+                .slice(0, 5);
+    } catch (e) { return []; }
+  }
+
+  function pushRun(run) {
+    var list = readRuns();
+    list.push(run);
+    list.sort(function (a, b) { return a.ms - b.ms; });
+    list = list.slice(0, 5);
+    try { localStorage.setItem(RUNS_KEY, JSON.stringify(list)); } catch (e) {}
+    return list;
+  }
+
+  function renderRuns(list, runId) {
+    if (!list.length) { recEl.innerHTML = ''; return; }
+    var html = '<div class="row head"><i>#</i><span>用时</span><span>等级</span></div>';
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      html += '<div class="row' + (runId && r.id === runId ? ' now' : '') + '">' +
+        '<i>' + (i + 1) + '</i><span>' + r.ms + 'ms</span>' +
+        '<span>' + rankOf(r.ms).n + '</span></div>';
+    }
+    recEl.innerHTML = html;
+  }
+
+  /* ---------- 流程 ---------- */
   function begin() {
     clearTimeout(waitTimer);
+    clearTimeout(cdTimer);
+    cancelAnimationFrame(meterRaf);
+    gauge.style.display = 'none';
+    cdEl.textContent = '3';
+    cdEl.classList.add('on');
+    mainLine.textContent = '准备';
+    subLine.textContent = '3-2-1 之后才开始，抢跑不算。';
+    setPhase('countdown', 'waiting');
+    recEl.innerHTML = '';
+    foot.textContent = '忍住 · 绿色前别点';
+
+    var n = 3;
+    sfxCd(3);
+    cdTimer = setInterval(function () {
+      n--;
+      if (n > 0) {
+        cdEl.textContent = String(n);
+        cdEl.classList.remove('on');
+        void cdEl.offsetWidth;
+        cdEl.classList.add('on');
+        sfxCd(n);
+      } else {
+        clearInterval(cdTimer);
+        cdEl.classList.remove('on');
+        waitGreen();
+      }
+    }, CD_STEP);
+  }
+
+  function waitGreen() {
     setPhase('waiting', 'waiting');
-    mainText.textContent = '等它变绿';
-    subText.textContent = '还没到，忍住。';
+    mainLine.textContent = '等它变绿';
+    subLine.textContent = '还没到，忍住。';
     var delay = MIN_WAIT + Math.random() * (MAX_WAIT - MIN_WAIT);
     waitTimer = setTimeout(arm, delay);
   }
@@ -141,14 +425,32 @@ body{
   function arm() {
     setPhase('armed', 'armed');
     armedAt = performance.now();
-    mainText.textContent = '点！';
-    subText.textContent = '';
+    mainLine.textContent = '点！';
+    subLine.textContent = '0.000 s';
+    foot.textContent = '就是现在 · 点下去';
+    sfxArm();
+    doFlash('go');
+    var r = pad.getBoundingClientRect();
+    burst(r.width * 0.5, r.height * 0.55, '#7ff0dc', '#ffd166', 16);
+    // 实时秒表
+    var meter = function (ts) {
+      if (phase !== 'armed') return;
+      var t = performance.now() - armedAt;
+      subLine.textContent = (t / 1000).toFixed(3) + ' s';
+      meterRaf = requestAnimationFrame(meter);
+    };
+    meterRaf = requestAnimationFrame(meter);
   }
 
-  function finish() {
+  function finish(evt) {
+    cancelAnimationFrame(meterRaf);
     var ms = Math.max(1, Math.round(performance.now() - armedAt));
+    var rk = rankOf(ms);
     setPhase('result', 'result');
-    nowEl.textContent = ms + ' ms';
+    nowEl.textContent = ms + 'ms';
+    session.push(ms);
+    if (session.length > 5) session.shift();
+    renderAvg();
 
     var isBest = !best || ms < best;
     if (isBest) {
@@ -157,59 +459,94 @@ body{
       try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
     }
 
-    mainText.innerHTML = '';
+    var run = { ms: ms, at: Date.now(), id: Date.now() + '-' + Math.random().toString(36).slice(2, 8) };
+    var list = pushRun(run);
+
+    cdEl.classList.remove('on');
+    mainLine.textContent = '';
     var msLine = document.createElement('p');
     msLine.className = 'ms';
     msLine.innerHTML = ms + '<span>ms</span>';
-    mainText.appendChild(msLine);
+    mainLine.appendChild(msLine);
 
-    subText.innerHTML = '';
-    var g = document.createElement('p');
-    g.className = 'grade';
-    g.textContent = grade(ms) + (isBest ? ' · 新纪录' : '');
-    subText.appendChild(g);
+    subLine.textContent = '';
+    var rkLine = document.createElement('p');
+    rkLine.className = 'rank ' + rk.k;
+    rkLine.innerHTML = rk.n + '<em>' + rk.cn + (isBest ? ' · 新纪录' : '') + '</em>';
+    subLine.appendChild(rkLine);
 
-    var r = document.createElement('p');
-    r.className = 'retry';
-    r.textContent = '再点一次，重来一局';
-    subText.appendChild(r);
+    gauge.style.display = 'block';
+    var pct = Math.min(100, (ms / 400) * 100);
+    gaugeMe.style.left = pct + '%';
+
+    renderRuns(list, run.id);
+    foot.textContent = '再点一次 · 重来一局';
+
+    sfxResult(ms);
+    if (isBest) sfxBest();
+    var rr = pad.getBoundingClientRect();
+    var px = evt && typeof evt.clientX === 'number' && evt.clientX ? evt.clientX - rr.left : rr.width / 2;
+    var py = evt && typeof evt.clientY === 'number' && evt.clientY ? evt.clientY - rr.top : rr.height / 2;
+    burst(px, py, ms < 200 ? '#7ff0dc' : '#ffb347', ms < 200 ? '#ffd166' : '#ffe9c9', ms < 200 ? 26 : 16);
+    shakePad();
   }
 
   function foul() {
     clearTimeout(waitTimer);
+    cancelAnimationFrame(meterRaf);
     setPhase('foul', 'foul');
+    cdEl.classList.remove('on');
     nowEl.textContent = '抢跑';
-    mainText.innerHTML = '';
+    gauge.style.display = 'none';
+    mainLine.textContent = '';
     var line = document.createElement('p');
     line.className = 'ms';
     line.textContent = '抢跑';
-    mainText.appendChild(line);
-    subText.innerHTML = '';
+    mainLine.appendChild(line);
+    subLine.textContent = '';
     var t = document.createElement('p');
-    t.className = 'grade';
-    t.textContent = '绿之前动手，这局不算';
-    subText.appendChild(t);
-    var r = document.createElement('p');
-    r.className = 'retry';
-    r.textContent = '再点一次，重新等';
-    subText.appendChild(r);
+    t.className = 'rank warm';
+    t.innerHTML = 'FOUL<em>绿之前动手，这局不算</em>';
+    subLine.appendChild(t);
+    renderRuns(readRuns(), null);
+    foot.textContent = '再点一次 · 重新等';
+    sfxFoul();    doFlash('bad');
+    shakePad();
   }
 
-  function onTap() {
-    if (phase === 'idle' || phase === 'result' || phase === 'foul') { begin(); return; }
+  function onTap(evt) {
+    if (phase === 'idle' || phase === 'result' || phase === 'foul') { sfxTap(); begin(); return; }
+    if (phase === 'countdown') { foul(); return; }
     if (phase === 'waiting') { foul(); return; }
-    if (phase === 'armed') { finish(); return; }
+    if (phase === 'armed') { finish(evt); return; }
   }
 
-  pad.addEventListener('click', onTap);
+  pad.addEventListener('click', function (e) { onTap(e); });
   pad.addEventListener('keydown', function (e) {
-    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); onTap(); }
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); onTap(null); }
   });
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onTap(); }
-    if (e.key === 'r' || e.key === 'R') { begin(); }
+    if (e.key === ' ' || e.key === 'Enter') {
+      if (e.target === pad) return;
+      e.preventDefault();
+      onTap(null);
+    }
+    if (e.key === 'r' || e.key === 'R') begin();
   });
+
+  goBtn.addEventListener('click', function () { begin(); });
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn;
+    renderSoundBtn();
+    try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch (e) {}
+    if (soundOn) tone(760, 0.1, 'triangle', 0.06);
+  });
+
+  window.addEventListener('resize', function () { sizeFx(); });
+
+  sizeFx();
+  recEl.innerHTML = '';
 })();
 </script>
 </body>
