@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>躲避 · paly</title>
+<meta name="theme-color" content="#0b0e11">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><rect x='12' y='21' width='9' height='3' rx='1.5' fill='%2335e0c8'/><rect x='14' y='6' width='4' height='4' fill='%23ffb347'/><rect x='8' y='12' width='5' height='4' fill='%23ffb347'/></svg>">
+<style>
+:root{
+  --bg:#0b0e11; --panel:#12171c; --line:#222b33; --ink:#e9eff5; --dim:#8b98a5;
+  --accent:#35e0c8; --accent-2:#ffb347; --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh;
+  background:radial-gradient(900px 600px at 50% -10%,rgba(53,224,200,.08),transparent 65%),var(--bg);
+  color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  padding:16px 16px calc(18px + env(safe-area-inset-bottom));
+  -webkit-font-smoothing:antialiased; overscroll-behavior:none;
+}
+.bar{width:min(100%,460px); display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px}
+.back{
+  display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid var(--line);
+  border-radius:10px; color:var(--dim); text-decoration:none; font-size:13px; background:var(--panel);
+  transition:color .18s,border-color .18s;
+}
+.back:hover{color:var(--ink); border-color:rgba(53,224,200,.4)}
+.title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase}
+.hud{width:min(100%,460px); display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin-bottom:12px}
+.stat{
+  flex:1 1 88px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+}
+.stat .label{font-size:11.5px; letter-spacing:.1em; color:#6f7d8a; white-space:nowrap}
+.stat strong{font-family:var(--mono); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums}
+.stat.best strong{color:var(--accent-2)}
+.goal{
+  width:min(100%,460px); margin:0 0 12px; padding:9px 13px;
+  border-left:2px solid rgba(255,179,71,.5); background:rgba(18,23,28,.6);
+  font-size:12.5px; color:#8b98a5; line-height:1.6;
+}
+.goal b{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--accent-2); margin-right:8px}
+
+.stage{
+  position:relative; width:min(100%,460px); border:1px solid var(--line);
+  border-radius:16px; overflow:hidden; background:#0f1419;
+  box-shadow:0 18px 50px rgba(0,0,0,.35);
+}
+.stage canvas{display:block; width:100%; height:auto; touch-action:none}
+.overlay{
+  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:8px; padding:24px; text-align:center; background:rgba(11,14,17,.88);
+  transition:opacity .2s;
+}
+.overlay.hidden{opacity:0; pointer-events:none}
+.ov-title{font-size:clamp(22px,6vw,32px); font-weight:650; margin:0; line-height:1.2}
+.ov-title .unit{font-family:var(--mono); font-size:16px; color:#7b8894; margin-left:6px}
+.ov-sub{margin:0; font-size:14px; color:#8b98a5; max-width:20em; line-height:1.6}
+.ov-sub.new{color:var(--accent-2); font-family:var(--mono); font-size:12.5px; letter-spacing:.12em}
+.ov-tip{font-family:var(--mono); font-size:11.5px; letter-spacing:.12em; color:#6f7d8a; margin-top:6px}
+
+.hint{width:min(100%,460px); margin:14px 0 0; color:#5c6772; font-size:12.5px; line-height:1.7; text-align:center}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a class="back" href="../index.html">← 返回</a>
+  <span class="title">Dodge</span>
+</div>
+
+<div class="hud">
+  <div class="stat"><span class="label">活了</span><strong id="survive">0.0s</strong></div>
+  <div class="stat best"><span class="label">最久</span><strong id="best">—</strong></div>
+</div>
+
+<p class="goal"><b>目标</b>左右移动，躲开从上往下落的块。被砸中就结束，活得越久越强。</p>
+
+<div class="stage">
+  <canvas id="cv" aria-label="躲避游戏区域"></canvas>
+  <div class="overlay" id="overlay">
+    <p class="ov-title" id="ovTitle">准备</p>
+    <p class="ov-sub" id="ovSub">点一下开始。左右移动，别被砸中。</p>
+    <p class="ov-tip" id="ovTip">鼠标拖动 / 手指拖动 / ← →</p>
+  </div>
+</div>
+
+<p class="hint">落块只会往下掉，缝隙一直在。手指放在屏幕下半部分拖、或按 ← →，都行。</p>
+
+<script>
+(function () {
+  'use strict';
+
+  var BEST_KEY = 'paly.dodge.best';
+  var W = 420, H = 520;
+
+  var canvas = document.getElementById('cv');
+  var ctx = canvas.getContext('2d');
+  canvas.width = W;
+  canvas.height = H;
+
+  var surviveEl = document.getElementById('survive');
+  var bestEl = document.getElementById('best');
+  var overlay = document.getElementById('overlay');
+  var ovTitle = document.getElementById('ovTitle');
+  var ovSub = document.getElementById('ovSub');
+  var ovTip = document.getElementById('ovTip');
+
+  var state = 'ready';       // ready | running | over
+  var elapsed = 0;           // 单位 ms
+  var lastT = 0;
+  var spawnAcc = 0;
+  var rafId = 0;
+  var best = 0;
+  var blocks = [];
+  var lastX = W / 2;
+
+  var player = { x: W / 2, w: 46, h: 16, y: H - 54 };
+  var keys = { left: false, right: false };
+
+  try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) { best = 0; }
+  renderBest();
+
+  function renderBest() {
+    bestEl.textContent = best ? (best / 1000).toFixed(1) + 's' : '—';
+  }
+
+  function speedAt(ms) {
+    return 0.05 + Math.min(0.15, (ms / 30000) * 0.15);     // 50 -> 200 px/s
+  }
+
+  function gapAt(ms) {
+    return 900 - Math.min(460, (ms / 30000) * 460);        // 900 -> 440 ms
+  }
+
+  function spawn() {
+    var w = 26 + Math.random() * 38;
+    var nx = Math.random() * (W - w);
+    if (Math.abs(nx - lastX) < 36) { nx = (nx + 130) % (W - w); }
+    lastX = nx;
+    blocks.push({ x: nx, y: -28, w: w, h: 22, vy: speedAt(elapsed) });
+  }
+
+  function reset() {
+    blocks = [];
+    elapsed = 0;
+    spawnAcc = 0;
+    lastX = W / 2;
+    player.x = W / 2;
+    surviveEl.textContent = '0.0s';
+  }
+
+  function start() {
+    reset();
+    state = 'running';
+    overlay.className = 'overlay hidden';
+    lastT = performance.now();
+    cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function gameOver() {
+    state = 'over';
+    cancelAnimationFrame(rafId);
+    var ms = Math.max(1, Math.round(elapsed));
+    var isBest = !best || ms > best;
+    if (isBest) {
+      best = ms;
+      renderBest();
+      try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
+    }
+    ovTitle.innerHTML = (ms / 1000).toFixed(1) + '<span class="unit">s</span>';
+    ovSub.className = 'ov-sub' + (isBest ? ' new' : '');
+    ovSub.textContent = isBest ? '最久的一次 · 新纪录' : '被砸中了 · 最久还是 ' + (best / 1000).toFixed(1) + 's';
+    ovTip.textContent = '点一下再来一局';
+    overlay.className = 'overlay';
+  }
+
+  function update(dt) {
+    elapsed += dt;
+
+    // 键盘移动
+    var dx = 0;
+    if (keys.left) dx -= 1;
+    if (keys.right) dx += 1;
+    if (dx) player.x += dx * 0.6 * dt;
+    player.x = Math.max(player.w / 2, Math.min(W - player.w / 2, player.x));
+
+    // 生成落块
+    spawnAcc += dt;
+    if (spawnAcc >= gapAt(elapsed)) {
+      spawnAcc = 0;
+      spawn();
+    }
+
+    // 落块下落
+    for (var i = blocks.length - 1; i >= 0; i--) {
+      var b = blocks[i];
+      b.y += b.vy * dt;
+      if (b.y > H + 30) { blocks.splice(i, 1); continue; }
+
+      // 判定：玩家方块与落块相交即结束（边缘各让 2px，手感不苛刻）
+      var px1 = player.x - player.w / 2 + 2, px2 = player.x + player.w / 2 - 2;
+      var py1 = player.y + 2, py2 = player.y + player.h - 2;
+      var bx1 = b.x + 2, bx2 = b.x + b.w - 2;
+      var by1 = b.y + 2, by2 = b.y + b.h - 2;
+      if (px1 < bx2 && px2 > bx1 && py1 < by2 && py2 > by1) {
+        gameOver();
+        return;
+      }
+    }
+
+    surviveEl.textContent = (elapsed / 1000).toFixed(1) + 's';
+  }
+
+  function draw() {
+    ctx.fillStyle = '#0f1419';
+    ctx.fillRect(0, 0, W, H);
+
+    // 淡淡的地面网格
+    ctx.strokeStyle = '#161d24';
+    ctx.lineWidth = 1;
+    for (var gy = 0; gy < H; gy += 65) {
+      ctx.beginPath();
+      ctx.moveTo(0, gy + 0.5);
+      ctx.lineTo(W, gy + 0.5);
+      ctx.stroke();
+    }
+
+    // 落块
+    for (var i = 0; i < blocks.length; i++) {
+      var b = blocks[i];
+      ctx.fillStyle = 'rgba(255,179,71,.92)';
+      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = 'rgba(255,179,71,.14)';
+      ctx.fillRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6);
+    }
+
+    // 玩家
+    ctx.fillStyle = '#35e0c8';
+    ctx.fillRect(player.x - player.w / 2, player.y, player.w, player.h);
+    ctx.fillStyle = 'rgba(53,224,200,.13)';
+    ctx.fillRect(player.x - player.w / 2 - 4, player.y - 4, player.w + 8, player.h + 8);
+  }
+
+  function loop(now) {
+    var dt = Math.min(40, now - lastT);
+    lastT = now;
+    if (state === 'running') {
+      update(dt);
+      if (state !== 'running') { draw(); return; }
+    }
+    draw();
+    rafId = requestAnimationFrame(loop);
+  }
+
+  function onPointer(e) {
+    if (state !== 'running') { return; }
+    var rect = canvas.getBoundingClientRect();
+    var lx = (e.clientX - rect.left) / rect.width * W;
+    player.x = Math.max(player.w / 2, Math.min(W - player.w / 2, lx));
+  }
+
+  canvas.addEventListener('pointermove', onPointer);
+  canvas.addEventListener('pointerdown', function (e) {
+    if (state === 'running') { onPointer(e); return; }
+    start();
+  });
+  overlay.addEventListener('click', function () {
+    if (state !== 'running') start();
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') { keys.left = true; e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { keys.right = true; e.preventDefault(); }
+    if (e.key === ' ' || e.key === 'Enter') {
+      e.preventDefault();
+      if (state !== 'running') start();
+    }
+  });
+  document.addEventListener('keyup', function (e) {
+    if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+  });
+
+  draw();
+})();
+</script>
+</body>
+</html>
