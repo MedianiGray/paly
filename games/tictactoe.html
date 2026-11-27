@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>井字棋 · paly</title>
+<meta name="theme-color" content="#0b0e11">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><path d='M9 9l6 6M15 9l-6 6' stroke='%2335e0c8' stroke-width='2.4'/><circle cx='22' cy='22' r='3.4' fill='none' stroke='%23ffb347' stroke-width='2.2'/></svg>">
+<style>
+:root{
+  --bg:#0b0e11; --panel:#12171c; --line:#222b33; --ink:#e9eff5; --dim:#8b98a5;
+  --accent:#35e0c8; --accent-2:#ffb347; --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh;
+  background:radial-gradient(900px 600px at 50% -10%,rgba(53,224,200,.08),transparent 65%),var(--bg);
+  color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  padding:16px 16px calc(18px + env(safe-area-inset-bottom));
+  -webkit-font-smoothing:antialiased; overscroll-behavior:none;
+}
+.bar{width:min(100%,460px); display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px}
+.back{
+  display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid var(--line);
+  border-radius:10px; color:var(--dim); text-decoration:none; font-size:13px; background:var(--panel);
+  transition:color .18s,border-color .18s;
+}
+.back:hover{color:var(--ink); border-color:rgba(53,224,200,.4)}
+.title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase}
+.hud{width:min(100%,460px); display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin-bottom:12px}
+.stat{
+  flex:1 1 80px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+}
+.stat .label{font-size:11.5px; letter-spacing:.1em; color:#6f7d8a; white-space:nowrap}
+.stat strong{font-family:var(--mono); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums}
+.stat.best strong{color:var(--accent-2)}
+.btns{display:flex; gap:8px}
+.btns button{
+  padding:0 16px; border-radius:11px; border:1px solid var(--line); background:var(--panel);
+  font-family:inherit; font-size:13px; color:#c6d3de; cursor:pointer; transition:border-color .18s,color .18s;
+}
+.btns button:hover{border-color:rgba(53,224,200,.45); color:var(--accent)}
+.goal{
+  width:min(100%,460px); margin:0 0 12px; padding:9px 13px;
+  border-left:2px solid rgba(255,179,71,.5); background:rgba(18,23,28,.6);
+  font-size:12.5px; color:#8b98a5; line-height:1.6;
+}
+.goal b{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--accent-2); margin-right:8px}
+
+.status{
+  width:min(100%,460px); min-height:38px; display:flex; align-items:center; justify-content:center;
+  margin-bottom:10px; font-family:var(--mono); font-size:13px; letter-spacing:.06em; color:var(--dim);
+  text-align:center; transition:color .2s;
+}
+.status.thinking{color:#7d8b98}
+.status.win{color:var(--accent)}
+.status.lose{color:#ff8a6b}
+.status.draw{color:var(--accent-2)}
+
+.board{
+  width:min(100%,460px); display:grid; grid-template-columns:repeat(3,1fr); gap:9px;
+  padding:11px; border:1px solid var(--line); border-radius:16px; background:#0f1419;
+  box-shadow:0 18px 50px rgba(0,0,0,.35);
+}
+.cell{
+  aspect-ratio:1; display:flex; align-items:center; justify-content:center;
+  border-radius:11px; background:#151c23; border:1px solid #1d262e;
+  font-family:var(--mono); font-size:clamp(32px,10.5vw,42px); font-weight:600;
+  cursor:pointer; user-select:none; -webkit-user-select:none; -webkit-tap-highlight-color:transparent;
+  transition:background .12s,border-color .12s,transform .12s,color .12s;
+}
+.cell:hover{background:#1b232b}
+.cell.x{color:var(--accent); cursor:default}
+.cell.o{color:var(--accent-2); cursor:default}
+.cell.x:hover,.cell.o:hover{background:#151c23}
+.cell.win{background:rgba(53,224,200,.13); border-color:rgba(53,224,200,.5)}
+.cell.win.o-win{background:rgba(255,179,71,.13); border-color:rgba(255,179,71,.5)}
+.cell.pop{animation:pop .18s ease-out}
+@keyframes pop{0%{transform:scale(.86)}100%{transform:scale(1)}}
+
+.hint{width:min(100%,460px); margin:14px 0 0; color:#5c6772; font-size:12.5px; line-height:1.7; text-align:center}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important; animation:none!important} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a class="back" href="../index.html">← 返回</a>
+  <span class="title">Tic Tac Toe</span>
+</div>
+
+<div class="hud">
+  <div class="stat"><span class="label">连胜</span><strong id="streak">0</strong></div>
+  <div class="stat best"><span class="label">最高连胜</span><strong id="best">—</strong></div>
+  <div class="btns"><button id="newBtn" type="button">重开</button></div>
+</div>
+
+<p class="goal"><b>目标</b>先把三个连成一条线。机器也在抢，先连成三个就赢；九格填满还没人连成就是平局。</p>
+
+<div class="status" id="status">你先手，点一格落子。</div>
+
+<div class="board" id="board" aria-label="井字棋盘"></div>
+
+<p class="hint">你走 X，机器走 O。点空格落子，`r` 键重开。</p>
+
+<script>
+(function () {
+  'use strict';
+
+  var boardEl = document.getElementById('board');
+  var statusEl = document.getElementById('status');
+  var streakEl = document.getElementById('streak');
+  var bestEl = document.getElementById('best');
+  var newBtn = document.getElementById('newBtn');
+
+  var KEY_BEST = 'paly.tictactoe.best';
+  var LINES = [
+    [0, 1, 2], [3, 4, 5], [6, 7, 8],
+    [0, 3, 6], [1, 4, 7], [2, 5, 8],
+    [0, 4, 8], [2, 4, 6]
+  ];
+
+  var grid = [];
+  var cells = [];
+  var over = false;
+  var busy = false;
+  var streak = 0;
+  var best = 0;
+  var thinkTimer = null;
+
+  function loadBest() {
+    try {
+      var v = parseInt(localStorage.getItem(KEY_BEST), 10);
+      best = isFinite(v) && v > 0 ? v : 0;
+    } catch (e) { best = 0; }
+    bestEl.textContent = best > 0 ? best + ' 场' : '—';
+  }
+
+  function saveBest() {
+    try { localStorage.setItem(KEY_BEST, String(best)); } catch (e) {}
+  }
+
+  function buildBoard() {
+    boardEl.innerHTML = '';
+    cells = [];
+    for (var i = 0; i < 9; i++) {
+      var b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'cell';
+      b.setAttribute('data-i', String(i));
+      b.setAttribute('aria-label', '第 ' + (i + 1) + ' 格');
+      boardEl.appendChild(b);
+      cells.push(b);
+    }
+  }
+
+  function paint(popAt) {
+    for (var i = 0; i < 9; i++) {
+      var el = cells[i];
+      var v = grid[i];
+      el.textContent = v || '';
+      el.className = 'cell' + (v === 'X' ? ' x' : v === 'O' ? ' o' : '');
+      if (popAt === i) {
+        void el.offsetWidth;
+        el.classList.add('pop');
+      }
+    }
+  }
+
+  function setStatus(text, kind) {
+    statusEl.textContent = text;
+    statusEl.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  function winnerOf(g) {
+    for (var k = 0; k < LINES.length; k++) {
+      var L = LINES[k];
+      var a = g[L[0]], b = g[L[1]], c = g[L[2]];
+      if (a && a === b && b === c) return { who: a, line: L };
+    }
+    return null;
+  }
+
+  function isFull(g) {
+    for (var i = 0; i < 9; i++) if (!g[i]) return false;
+    return true;
+  }
+
+  function empties(g) {
+    var out = [];
+    for (var i = 0; i < 9; i++) if (!g[i]) out.push(i);
+    return out;
+  }
+
+  // 机器：先抢能赢的，再堵玩家的，然后中心、角、边。只有这一档。
+  function machineMove() {
+    var i;
+    // 1. 自己能连成三个就直接赢
+    for (i = 0; i < 9; i++) {
+      if (grid[i]) continue;
+      grid[i] = 'O';
+      if (winnerOf(grid)) { grid[i] = ''; return i; }
+      grid[i] = '';
+    }
+    // 2. 玩家下一手要赢就堵
+    for (i = 0; i < 9; i++) {
+      if (grid[i]) continue;
+      grid[i] = 'X';
+      if (winnerOf(grid)) { grid[i] = ''; return i; }
+      grid[i] = '';
+    }
+    // 3. 中心
+    if (!grid[4]) return 4;
+    // 4. 角
+    var corners = [];
+    var cs = [0, 2, 6, 8];
+    for (i = 0; i < cs.length; i++) if (!grid[cs[i]]) corners.push(cs[i]);
+    if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
+    // 5. 边
+    var edges = [];
+    var es = [1, 3, 5, 7];
+    for (i = 0; i < es.length; i++) if (!grid[es[i]]) edges.push(es[i]);
+    if (edges.length) return edges[Math.floor(Math.random() * edges.length)];
+    return -1;
+  }
+
+  function markWin(line, who) {
+    for (var i = 0; i < line.length; i++) {
+      var el = cells[line[i]];
+      el.classList.add('win');
+      if (who === 'O') el.classList.add('o-win');
+    }
+  }
+
+  function finish(kind, result) {
+    over = true;
+    busy = false;
+    if (thinkTimer) { clearTimeout(thinkTimer); thinkTimer = null; }
+
+    if (kind === 'win') {
+      streak += 1;
+      if (streak > best) { best = streak; saveBest(); bestEl.textContent = best + ' 场'; }
+      streakEl.textContent = String(streak);
+      markWin(result.line, 'X');
+      setStatus('你赢了 · 三连线' + (streak > 1 ? ' · 连胜 ' + streak : ''), 'win');
+    } else if (kind === 'lose') {
+      streak = 0;
+      streakEl.textContent = '0';
+      markWin(result.line, 'O');
+      setStatus('机器连成三个，这局你输了。', 'lose');
+    } else {
+      streak = 0;
+      streakEl.textContent = '0';
+      setStatus('九格填满，平局。', 'draw');
+    }
+  }
+
+  function machineTurn() {
+    thinkTimer = null;
+    if (over) return;
+    var m = machineMove();
+    if (m >= 0) {
+      grid[m] = 'O';
+      paint(m);
+      var res = winnerOf(grid);
+      if (res) { finish('lose', res); return; }
+      if (isFull(grid)) { finish('draw'); return; }
+    }
+    busy = false;
+    setStatus('轮到你了。');
+  }
+
+  function play(i) {
+    if (over || busy || grid[i]) return;
+    grid[i] = 'X';
+    paint(i);
+
+    var res = winnerOf(grid);
+    if (res) { finish('win', res); return; }
+    if (isFull(grid)) { finish('draw'); return; }
+
+    busy = true;
+    setStatus('机器在想…', 'thinking');
+    thinkTimer = setTimeout(machineTurn, 420);
+  }
+
+  function startNew() {
+    if (thinkTimer) { clearTimeout(thinkTimer); thinkTimer = null; }
+    grid = ['', '', '', '', '', '', '', '', ''];
+    over = false;
+    busy = false;
+    paint(-1);
+    setStatus('你先手，点一格落子。');
+  }
+
+  boardEl.addEventListener('click', function (e) {
+    var t = e.target.closest ? e.target.closest('.cell') : null;
+    if (!t || !boardEl.contains(t)) return;
+    play(parseInt(t.getAttribute('data-i'), 10));
+  });
+
+  newBtn.addEventListener('click', startNew);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'r' || e.key === 'R') startNew();
+  });
+
+  loadBest();
+  buildBoard();
+  startNew();
+})();
+</script>
+</body>
+</html>
