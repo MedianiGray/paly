@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>反应测试 · paly</title>
+<meta name="theme-color" content="#0b0e11">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><circle cx='16' cy='16' r='6' fill='none' stroke='%2335e0c8' stroke-width='2'/><path d='M16 8v4' stroke='%23ffb347' stroke-width='2'/></svg>">
+<style>
+:root{
+  --bg:#0b0e11; --panel:#12171c; --line:#222b33; --ink:#e9eff5; --dim:#8b98a5;
+  --accent:#35e0c8; --accent-2:#ffb347; --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh;
+  background:radial-gradient(900px 600px at 50% -10%,rgba(53,224,200,.08),transparent 65%),var(--bg);
+  color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  padding:16px 16px calc(18px + env(safe-area-inset-bottom));
+  -webkit-font-smoothing:antialiased; overscroll-behavior:none;
+}
+.bar{width:min(100%,460px); display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px}
+.back{
+  display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid var(--line);
+  border-radius:10px; color:var(--dim); text-decoration:none; font-size:13px; background:var(--panel);
+  transition:color .18s,border-color .18s;
+}
+.back:hover{color:var(--ink); border-color:rgba(53,224,200,.4)}
+.title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase}
+.hud{width:min(100%,460px); display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin-bottom:12px}
+.stat{
+  flex:1 1 88px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+}
+.stat .label{font-size:11.5px; letter-spacing:.1em; color:#6f7d8a; white-space:nowrap}
+.stat strong{font-family:var(--mono); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums}
+.stat.best strong{color:var(--accent-2)}
+.goal{
+  width:min(100%,460px); margin:0 0 12px; padding:9px 13px;
+  border-left:2px solid rgba(255,179,71,.5); background:rgba(18,23,28,.6);
+  font-size:12.5px; color:#8b98a5; line-height:1.6;
+}
+.goal b{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--accent-2); margin-right:8px}
+
+.pad{
+  width:min(100%,460px); height:min(58vh,340px); min-height:240px;
+  border:1px solid var(--line); border-radius:16px; background:#12171c;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px;
+  text-align:center; padding:24px; cursor:pointer; user-select:none; -webkit-user-select:none;
+  transition:background .18s, border-color .18s;
+  -webkit-tap-highlight-color:transparent;
+}
+.pad:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
+.pad.waiting{background:#171d24; border-color:#2a343d}
+.pad.armed{background:#10312c; border-color:rgba(53,224,200,.6)}
+.pad.result{background:#141a20; border-color:rgba(53,224,200,.35)}
+.pad.foul{background:#2a1a16; border-color:rgba(255,120,90,.45)}
+
+.pad .main{font-size:clamp(24px,7vw,40px); font-weight:650; line-height:1.2; margin:0}
+.pad .sub{margin:0; font-size:14px; color:#8b98a5; max-width:24em; line-height:1.6}
+.pad .ms{font-family:var(--mono); font-size:clamp(44px,13vw,72px); font-weight:600; line-height:1; color:var(--accent); font-variant-numeric:tabular-nums}
+.pad .ms span{font-size:22px; margin-left:4px; color:#7b8894}
+.pad .grade{font-family:var(--mono); font-size:13px; letter-spacing:.16em; color:var(--accent-2)}
+.pad.foul .ms{color:#ff8a6b}
+.pad .retry{
+  margin-top:6px; font-family:var(--mono); font-size:11.5px; letter-spacing:.12em; color:#6f7d8a;
+}
+.hint{width:min(100%,460px); margin:14px 0 0; color:#5c6772; font-size:12.5px; line-height:1.7; text-align:center}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a class="back" href="../index.html">← 返回</a>
+  <span class="title">Reaction</span>
+</div>
+
+<div class="hud">
+  <div class="stat"><span class="label">这次</span><strong id="now">—</strong></div>
+  <div class="stat best"><span class="label">最快</span><strong id="best">—</strong></div>
+</div>
+
+<p class="goal"><b>目标</b>屏幕变绿的那一下点下去，测你反应多少毫秒。绿色之前点算抢跑。</p>
+
+<div class="pad waiting" id="pad" role="button" tabindex="0" aria-live="polite">
+  <div class="main" id="mainText">等它变绿</div>
+  <div class="sub" id="subText">点一下开始，之后别急着点。</div>
+</div>
+
+<p class="hint">点一次就出结果，绿色前点击判抢跑。键盘空格同样可用。</p>
+
+<script>
+(function () {
+  'use strict';
+
+  var BEST_KEY = 'paly.reaction.best';
+  var MIN_WAIT = 1100, MAX_WAIT = 3300;
+
+  var pad = document.getElementById('pad');
+  var mainText = document.getElementById('mainText');
+  var subText = document.getElementById('subText');
+  var nowEl = document.getElementById('now');
+  var bestEl = document.getElementById('best');
+
+  var phase = 'idle';          // idle | waiting | armed | result | foul
+  var waitTimer = 0;
+  var armedAt = 0;
+  var best = 0;
+
+  try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) { best = 0; }
+  renderBest();
+
+  function renderBest() {
+    bestEl.textContent = best ? best + ' ms' : '—';
+  }
+
+  function setPhase(p, cls) {
+    phase = p;
+    pad.className = 'pad ' + cls;
+  }
+
+  function grade(ms) {
+    if (ms < 180) return '神反应';
+    if (ms < 250) return '很快';
+    if (ms < 350) return '正常';
+    if (ms < 500) return '偏慢';
+    return '再来一次';
+  }
+
+  function begin() {
+    clearTimeout(waitTimer);
+    setPhase('waiting', 'waiting');
+    mainText.textContent = '等它变绿';
+    subText.textContent = '还没到，忍住。';
+    var delay = MIN_WAIT + Math.random() * (MAX_WAIT - MIN_WAIT);
+    waitTimer = setTimeout(arm, delay);
+  }
+
+  function arm() {
+    setPhase('armed', 'armed');
+    armedAt = performance.now();
+    mainText.textContent = '点！';
+    subText.textContent = '';
+  }
+
+  function finish() {
+    var ms = Math.round(performance.now() - armedAt);
+    setPhase('result', 'result');
+    nowEl.textContent = ms + ' ms';
+
+    var isBest = !best || ms < best;
+    if (isBest) {
+      best = ms;
+      renderBest();
+      try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
+    }
+
+    mainText.innerHTML = '';
+    var msLine = document.createElement('p');
+    msLine.className = 'ms';
+    msLine.innerHTML = ms + '<span>ms</span>';
+    mainText.appendChild(msLine);
+
+    subText.innerHTML = '';
+    var g = document.createElement('p');
+    g.className = 'grade';
+    g.textContent = grade(ms) + (isBest ? ' · 新纪录' : '');
+    subText.appendChild(g);
+
+    var r = document.createElement('p');
+    r.className = 'retry';
+    r.textContent = '再点一次，重来一局';
+    subText.appendChild(r);
+  }
+
+  function foul() {
+    clearTimeout(waitTimer);
+    setPhase('foul', 'foul');
+    nowEl.textContent = '抢跑';
+    mainText.innerHTML = '';
+    var line = document.createElement('p');
+    line.className = 'ms';
+    line.textContent = '抢跑';
+    mainText.appendChild(line);
+    subText.innerHTML = '';
+    var t = document.createElement('p');
+    t.className = 'grade';
+    t.textContent = '绿之前动手，这局不算';
+    subText.appendChild(t);
+    var r = document.createElement('p');
+    r.className = 'retry';
+    r.textContent = '再点一次，重新等';
+    subText.appendChild(r);
+  }
+
+  function onTap() {
+    if (phase === 'idle' || phase === 'result' || phase === 'foul') { begin(); return; }
+    if (phase === 'waiting') { foul(); return; }
+    if (phase === 'armed') { finish(); return; }
+  }
+
+  pad.addEventListener('click', onTap);
+  pad.addEventListener('keydown', function (e) {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); onTap(); }
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onTap(); }
+    if (e.key === 'r' || e.key === 'R') { begin(); }
+  });
+})();
+</script>
+</body>
+</html>

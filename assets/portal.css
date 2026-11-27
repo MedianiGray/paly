@@ -449,6 +449,12 @@ kbd {
   color: var(--accent-2);
 }
 
+.rm-tag.done {
+  border-color: rgba(53, 224, 200, 0.4);
+  background: rgba(53, 224, 200, 0.08);
+  color: var(--accent);
+}
+
 .roadmap-out {
   margin: 16px 0 0;
   padding-left: 11px;
