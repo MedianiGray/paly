@@ -76,12 +76,12 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 .grid3 div{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:9px; padding:6px 4px}
 .grid3 span{display:block; font-size:10.5px; letter-spacing:.08em; color:#6f7d8a}
 .grid3 b{display:block; font-family:var(--mono); font-size:15px; margin-top:3px; color:#dfe9f2}
-.tbl{width:100%; margin-top:4px; font-family:var(--mono); font-size:11px}
-.tbl .row{display:grid; grid-template-columns:20px 1fr 58px; gap:6px; align-items:baseline; padding:2px 6px; border-radius:6px; color:#7b8894}
+.tbl{width:min(100%,268px); margin:6px auto 0; font-family:var(--mono); font-size:11px}
+.tbl .row{display:grid; grid-template-columns:18px 80px 1fr; gap:6px; align-items:baseline; padding:2px 6px; border-radius:6px; color:#7b8894}
 .tbl .row.head{color:#556370; font-size:10px; letter-spacing:.08em}
 .tbl .row.now{background:rgba(53,224,200,.12); color:#bff7ee}
 .tbl .row i{font-style:normal; color:#556370}
-.tbl .row span:nth-child(3){text-align:right}
+.tbl .row span:nth-child(3){text-align:left}
 .ov-tip{font-family:var(--mono); font-size:11.5px; letter-spacing:.12em; color:#6f7d8a; margin-top:6px}
 
 .hint{width:min(100%,460px); margin:14px 0 0; color:#5c6772; font-size:12.5px; line-height:1.7; text-align:center}
@@ -98,6 +98,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
 <div class="hud">
   <div class="stat"><span class="label">活了</span><strong id="survive">0.0s</strong></div>
+  <div class="stat"><span class="label">10s 刻度</span><strong id="mark">0</strong></div>
   <div class="stat best"><span class="label">最久</span><strong id="best">—</strong></div>
 </div>
 
@@ -133,6 +134,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   canvas.height = H;
 
   var surviveEl = document.getElementById('survive');
+  var markEl = document.getElementById('mark');
   var bestEl = document.getElementById('best');
   var overlay = document.getElementById('overlay');
   var ovRank = document.getElementById('ovRank');
@@ -282,6 +284,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     lastX = W / 2;
     player.x = W / 2;
     surviveEl.textContent = '0.0s';
+    markEl.textContent = '0';
     clearTimeout(dieTimer);
   }
 
@@ -338,7 +341,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       ovStats.innerHTML =
         '<div><span>存活</span><b>' + (ms / 1000).toFixed(1) + 's</b></div>' +
         '<div><span>最久</span><b>' + (best / 1000).toFixed(1) + 's</b></div>' +
-        '<div><span>挡下</span><b>' + milestone + '</b></div>';
+        '<div><span>10s 刻度</span><b>' + milestone + '</b></div>';
       renderRuns(list, run.id);
       ovTip.textContent = isBest ? '新纪录 · 点一下再来' : '点一下再来一局';
       overlay.className = 'overlay';
@@ -353,6 +356,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     // 里程碑：每 10 秒闪一下，只做标记，不给任何加成
     if (elapsed >= (milestone + 1) * 10000) {
       milestone += 1;
+      markEl.textContent = String(milestone);
       flash = 0.55;
       flashColor = '53,224,200';
       sfxMark();
@@ -568,6 +572,8 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     if (soundOn) tone(720, 0.1, 'triangle', 0.06);
   });
 
+  renderRuns(readRuns(), null);
+  ovTip.textContent = '点一下开始';
   draw();
 })();
 </script>
