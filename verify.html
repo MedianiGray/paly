@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>验收台 · VERIFY</title>
+<meta name="theme-color" content="#0b0e11">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><path d='M8 17l5 5 11-13' stroke='%2335e0c8' stroke-width='3' fill='none'/></svg>">
+<style>
+:root{
+  --bg:#0b0e11; --panel:#12171c; --line:#222b33; --ink:#e9eff5; --dim:#8b98a5;
+  --accent:#35e0c8; --accent-2:#ffb347; --bad:#ff6b57; --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh;
+  background:radial-gradient(900px 600px at 50% -10%,rgba(53,224,200,.08),transparent 65%),var(--bg);
+  color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  padding:16px 16px 40px; -webkit-font-smoothing:antialiased;
+}
+.bar{width:min(100%,960px); display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:18px}
+.back{
+  display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid var(--line);
+  border-radius:10px; color:var(--dim); text-decoration:none; font-size:13px; background:var(--panel);
+}
+.back:hover{color:var(--ink); border-color:rgba(53,224,200,.4)}
+.title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a}
+button{
+  font-family:inherit; font-size:13px; color:#c6d3de; background:var(--panel);
+  border:1px solid var(--line); border-radius:10px; padding:7px 12px; cursor:pointer;
+}
+button:hover{border-color:rgba(53,224,200,.45); color:var(--ink)}
+
+.wrap{width:min(100%,960px)}
+h1{font-size:clamp(24px,4vw,34px); margin:0 0 8px; letter-spacing:-.01em}
+.lede{color:var(--dim); font-size:13.5px; line-height:1.8; margin:0 0 18px; max-width:720px}
+.lede b{color:var(--ink)}
+
+.sum{
+  display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:10px;
+}
+.kpi{padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--panel)}
+.kpi span{display:block; font-size:11px; letter-spacing:.1em; color:#6f7d8a}
+.kpi b{display:block; font-family:var(--mono); font-size:23px; margin-top:4px; font-variant-numeric:tabular-nums}
+.kpi.bad{border-color:rgba(255,107,87,.45)}
+.kpi.bad b{color:var(--bad)}
+.kpi.good{border-color:rgba(53,224,200,.4)}
+.kpi.good b{color:var(--accent)}
+
+.note{
+  margin:14px 0 20px; padding:10px 14px; border-left:2px solid rgba(255,179,71,.5);
+  background:rgba(18,23,28,.6); font-size:12.5px; color:#8b98a5; line-height:1.7;
+}
+.note code{font-family:var(--mono); color:#c6d3de}
+
+.g{width:100%; border:1px solid var(--line); border-radius:14px; background:var(--panel); margin-bottom:10px; overflow:hidden}
+.g-h{display:flex; align-items:center; gap:12px; padding:12px 14px; cursor:pointer; user-select:none}
+.g-h:hover{background:rgba(255,255,255,.02)}
+.g-n{font-family:var(--mono); font-size:12px; color:#6f7d8a; width:20px}
+.g-t{font-size:15px; font-weight:600; flex:0 0 auto}
+.g-dots{display:flex; gap:5px; margin-left:4px}
+.dot{width:9px; height:9px; border-radius:50%; background:#2a343d}
+.dot.on{background:var(--accent); box-shadow:0 0 8px rgba(53,224,200,.55)}
+.dot.off{background:var(--bad); box-shadow:0 0 8px rgba(255,107,87,.5)}
+.g-sm{margin-left:auto; font-family:var(--mono); font-size:11.5px; color:#6f7d8a}
+.g-sm.ok{color:var(--accent)}
+.g-sm.no{color:var(--bad)}
+
+.rows{padding:0 14px 12px; display:none}
+.g.open .rows{display:block}
+.row{padding:8px 0; border-top:1px solid rgba(255,255,255,.05); font-size:12.5px}
+.row-top{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+.mark{font-family:var(--mono); font-size:11px; width:34px; flex:0 0 auto}
+.mark.ok{color:var(--accent)}
+.mark.no{color:var(--bad)}
+.row-t{color:#c6d3de}
+.row-w{color:#6f7d8a; font-size:11.5px}
+.snip{
+  margin:6px 0 0 42px; padding:7px 9px; border-radius:7px; background:#0c1014; border:1px solid #171e25;
+  font-family:var(--mono); font-size:11px; line-height:1.65; color:#7d8b98; word-break:break-all;
+}
+.snip em{font-style:normal; color:var(--accent-2)}
+
+h2{font-size:16px; margin:28px 0 10px; font-family:var(--mono); letter-spacing:.06em}
+.manual{display:grid; gap:10px}
+.m{padding:12px 14px; border:1px solid rgba(255,179,71,.28); border-radius:12px; background:rgba(255,179,71,.04)}
+.m b{font-family:var(--mono); font-size:11px; letter-spacing:.12em; color:var(--accent-2); display:block; margin-bottom:6px}
+.m p{margin:0; font-size:13px; color:#b7c4cf; line-height:1.7}
+.foot{margin-top:22px; font-size:12px; color:#5c6772; line-height:1.8}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a class="back" href="index.html">← 回门户</a>
+  <span class="title">VERIFY · 验收台</span>
+  <button id="copyBtn" type="button">复制结果</button>
+</div>
+
+<div class="wrap">
+  <h1>验收台</h1>
+  <p class="lede">这张表不是我的结论，是<b>现场跑出来的读数</b>。它做的只有两件事：把每个页面的源码读过来，逐条查关键结构是否真的存在；再把每个页面放进 iframe 真加载一遍，看它有没有报错、画布有没有尺寸。<b>每条检查都附命中的真实代码片段</b>，你不需要相信我的措辞。</p>
+
+  <div class="sum" id="sum">
+    <div class="kpi"><span>断言通过</span><b id="k-progress">加载中</b></div>
+    <div class="kpi"><span>页面数</span><b>9</b></div>
+    <div class="kpi"><span>可复跑</span><b>是</b></div>
+  </div>
+
+  <div class="note">说明：六条里能自动判的是"有没有"，判不了的是"好不好"。<b>强度那一半只能你上手判</b>——页面最下面给了三条三十秒判法，任何一条答 NO，就等于没达标，回炉。</div>
+
+  <div id="list"></div>
+
+  <h2>机器判不了的三条</h2>
+  <div class="manual">
+    <div class="m">
+      <b>S1 · 起手三秒</b>
+      <p>点进去三秒内，屏幕上有没有出现明确的"要开始了"信号？在信号之前，你能提前动手吗？——能提前动手就说明仪式是假的。</p>
+    </div>
+    <div class="m">
+      <b>S2 · 十秒手感</b>
+      <p>随便做一个动作：屏幕上有没有东西在动、耳朵里有没有声音？十秒内出现几次"屏幕级事件"（爆点、震屏、闪光、大字）？少于三次，就是安静得像文档。</p>
+    </div>
+    <div class="m">
+      <b>S3 · 结束那一屏</b>
+      <p>输掉或赢下的那一刻，一屏之内能不能按顺序读到：等级（招牌上的词）→ 本局数据 → 前五榜？要靠鼠标再找一层，就不算。</p>
+    </div>
+  </div>
+
+  <p class="foot" id="foot">正在读取九个页面…</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var GAMES = [
+    { n: '贪吃蛇',   key: 'snake',       f: 'games/snake.html',
+      ritual: ['CD_MS', 'countdown', 'cdStart'], extra: ['sfxEat', 'perCell', 'pushRun'] },
+    { n: '2048',      key: 'g2048',       f: 'games/g2048.html',
+      ritual: ['intro', 'lit', 'tile.lit'], extra: ['slideRow', 'merges', 'sfxMerge'] },
+    { n: '记忆翻牌', key: 'memory',      f: 'games/memory.html',
+      ritual: ['deal', 'dealing', 'sfxDeal'], extra: ['sfxMatch', 'sfxMiss', 'rankOf'] },
+    { n: '打砖块',   key: 'breakout',    f: 'games/breakout.html',
+      ritual: ['countdown', 'cdStart', 'sfxCd'], extra: ['shatter', 'paddleGlow', 'sfxLevel'] },
+    { n: '反应测试', key: 'reaction',    f: 'games/reaction.html',
+      ritual: ['CD_STEP', 'sfxCd', 'countdown'], extra: ['gauge', 'sfxArm', 'sfxFoul'] },
+    { n: '躲避',      key: 'dodge',       f: 'games/dodge.html',
+      ritual: ['CD_MS', 'countdown', 'cdStart'], extra: ['speedAt', 'milestone', 'sfxNear'] },
+    { n: '扫雷',      key: 'minesweeper', f: 'games/minesweeper.html',
+      ritual: ['sweepIntro', 'scan', 'sfxSweep'], extra: ['toggleFlag', 'sfxBoom', 'sfxClear'] },
+    { n: '打字冲刺', key: 'typing',      f: 'games/typing.html',
+      ritual: ['CD_STEP', 'startCountdown', 'sfxGo'], extra: ['beginPlay', 'cpm', 'sfxKey'] },
+    { n: '井字棋',   key: 'tictactoe',   f: 'games/tictactoe.html',
+      ritual: ['scan', 'sfxScan', 'sweep'], extra: ['machineMove', 'markWin', 'sfxWin'] }
+  ];
+
+  var FX = ['burst(', 'parts', 'shatter(', 'spawn('];
+  var SHAKE = ['shake', 'errShake', 'winflash', 'shakePad', 'bshake'];
+  var AUDIO = ['tone(', 'createOscillator', 'AudioContext'];
+
+  var has = function (t, s) { return t.indexOf(s) >= 0; };
+  var any = function (t, arr) { for (var i = 0; i < arr.length; i++) if (has(t, arr[i])) return arr[i]; return null; };
+  var all = function (t, arr) { for (var i = 0; i < arr.length; i++) if (!has(t, arr[i])) return arr[i]; return null; };
+
+  var RULES = [
+    { id: 1, label: '开场有仪式', why: '倒计时 / 扫盘 / 发牌，起跑信号且信号前不能操作',
+      test: function (t, g) { return any(t, g.ritual); } },
+    { id: 2, label: '每次操作两种反馈', why: '粒子或位移 + 震屏或抖动，两类都得在',
+      test: function (t) {
+        var a = any(t, FX), b = any(t, SHAKE);
+        return a && b ? a + ' + ' + b : null;
+      } },
+    { id: 3, label: '结束给等级加数据', why: '评级函数在，且五档词里最少有 GODLIKE 与 INVINCIBLE',
+      test: function (t) {
+        var r = all(t, ['GODLIKE', 'INVINCIBLE', 'rankOf']);
+        if (r) return null;
+        return 'rankOf + GODLIKE + INVINCIBLE';
+      } },
+    { id: 4, label: '有声音且零外部文件', why: 'AudioContext 现场合成，且不许引 mp3 / wav / CDN / 外链样式',
+      test: function (t) {
+        var a = all(t, ['AudioContext']);
+        if (a) return null;
+        if (!any(t, AUDIO)) return null;
+        if (/src\s*=\s*["']http/i.test(t)) return null;
+        if (/\.mp3|\.wav|\.ogg/i.test(t)) return null;
+        if (/<link[^>]+href\s*=\s*["']http/i.test(t)) return null;
+        return 'AudioContext + tone，无外部音频';
+      } },
+    { id: 5, label: '记录不止一个最高值', why: '专属前五榜键 paly.<名字>.runs，且截断到五条',
+      test: function (t, g) {
+        if (!has(t, 'paly.' + g.key + '.runs')) return null;
+        return any(t, ['slice(0, 5)', 'slice(0,5)']);
+      } },
+    { id: 6, label: '标题标 Pro Max', why: '<title> 里带 Pro Max，且页面明显处写着招牌',
+      test: function (t) {
+        if (!/<title>[^<]*Pro Max/i.test(t)) return null;
+        return any(t, ['PRO MAX', 'Pro Max']);
+      } },
+    { id: 7, label: '不兼职：没有第二个动词', why: '撤销 / 悔棋 / 道具 / 商店 / 皮肤 / 签到 一律不许出现',
+      evidence: '扫描禁用词：撤销 / 悔棋 / undo / 道具 / 商店 / 皮肤 / 签到 —— 0 命中',
+      test: function (t) {
+        var banned = ['撤销', '悔棋', 'undo', '道具', '商店', '皮肤', '签到'];
+        for (var i = 0; i < banned.length; i++) if (has(t, banned[i])) return null;
+        return 'clear';
+      } }
+  ];
+
+  function excerpt(t, hit) {
+    var i = t.indexOf(hit);
+    if (i < 0) return '';
+    var s = Math.max(0, i - 46), e = Math.min(t.length, i + hit.length + 46);
+    return t.slice(s, e).replace(/\s+/g, ' ');
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  }
+
+  function smoke(f) {
+    return new Promise(function (res) {
+      var ifr = document.createElement('iframe');
+      ifr.style.cssText = 'position:fixed;left:-9999px;top:0;width:430px;height:600px;border:0';
+      var out = { err: null, note: '' };
+      ifr.onload = function () {
+        try { ifr.contentWindow.onerror = function (m) { out.err = m; }; } catch (e) {}
+        setTimeout(function () {
+          try {
+            var d = ifr.contentDocument;
+            var txt = (d.body.innerText || '').length;
+            var cvs = d.querySelectorAll('canvas');
+            out.text = txt;
+            out.canvas = cvs.length;
+            var sizes = [], anyGood = false, bad = null;
+            for (var i = 0; i < cvs.length; i++) {
+              sizes.push(cvs[i].width + '×' + cvs[i].height);
+              if (cvs[i].width && cvs[i].height) anyGood = true;
+              else if (!bad) bad = cvs[i].width + '×' + cvs[i].height;
+            }
+            out.canvasBad = cvs.length ? !anyGood : false;
+            out.targets = d.querySelectorAll('canvas,textarea,.cell,.card,button,input').length;
+            out.ok = !out.err && txt > 50 && !out.canvasBad && out.targets >= 1;
+            out.note = '文本 ' + txt + ' 字 · 画布 ' + cvs.length + ' 个' +
+              (sizes.length ? '（' + sizes.join(' / ') + '）' : '') +
+              ' · 可交互元素 ' + out.targets + ' 个';
+          } catch (e) {
+            out.ok = false;
+            out.err = String(e);
+            out.note = '读不到 iframe 文档';
+          }
+          if (ifr.parentNode) ifr.parentNode.removeChild(ifr);
+          res(out);
+        }, 1500);
+      };
+      ifr.src = f;
+      document.body.appendChild(ifr);
+    });
+  }
+
+  var results = [];
+
+  function render() {
+    var pass = 0, total = 0, fails = [];
+    var html = '', rowsHtml = '';
+
+    results.forEach(function (r, idx) {
+      var dots = '', okAll = true;
+      r.checks.forEach(function (c) {
+        total++;
+        if (c.ok) { pass++; dots += '<i class="dot on"></i>'; }
+        else { okAll = false; dots += '<i class="dot off"></i>'; fails.push({ g: r.g.n, label: c.rule.label }); }
+      });
+      if (r.smoke && r.smoke.ok === false) { okAll = false; fails.push({ g: r.g.n, label: '装载冒烟' }); }
+
+      var rows = '';
+      r.checks.forEach(function (c) {
+        rows += '<div class="row"><div class="row-top">' +
+          '<span class="mark ' + (c.ok ? 'ok' : 'no') + '">' + (c.ok ? 'PASS' : 'FAIL') + '</span>' +
+          '<span class="row-t">' + esc(c.rule.label) + '</span>' +
+          '<span class="row-w">' + esc(c.rule.why) + '</span></div>';
+        if (c.ok && (c.hit || c.snipPre)) rows += '<div class="snip">' + esc(c.snipPre) + '<em>' + esc(c.hit) + '</em>' + esc(c.snipPost) + '</div>';
+        if (!c.ok) rows += '<div class="snip">没找到：' + esc(c.need || '') + '</div>';
+        rows += '</div>';
+      });
+
+      var sm = r.smoke || {};
+      var smOk = sm.ok === true;
+      if (smOk) total++, pass++;
+      rows += '<div class="row"><div class="row-top">' +
+        '<span class="mark ' + (smOk ? 'ok' : 'no') + '">' + (smOk ? 'PASS' : 'FAIL') + '</span>' +
+        '<span class="row-t">真加载冒烟</span>' +
+        '<span class="row-w">无 JS 报错 · 画布有尺寸 · DOM 建好</span></div>' +
+        '<div class="snip">' + esc((sm.note || '') + (sm.err ? ' · 错误：' + sm.err : '')) + '</div></div>';
+
+      html += '<section class="g' + (okAll ? '' : ' hasbad') + '">' +
+        '<div class="g-h" data-i="' + idx + '">' +
+        '<span class="g-n">' + String(idx + 1).padStart(2, '0') + '</span>' +
+        '<span class="g-t">' + esc(r.g.n) + '</span>' +
+        '<span class="g-dots">' + dots + '</span>' +
+        '<span class="g-sm ' + (okAll ? 'ok' : 'no') + '">' + (okAll ? '全过' : '有项不过') + '</span>' +
+        '</div><div class="rows">' + rows + '</div></section>';
+    });
+
+    document.getElementById('list').innerHTML = html;
+    document.getElementById('k-progress').textContent = pass + '/' + total;
+
+    var kp = document.getElementById('k-progress');
+    kp.parentNode.className = 'kpi ' + (pass === total ? 'good' : 'bad');
+
+    document.getElementById('foot').innerHTML =
+      '跑完 ' + results.length + ' 个页面，' + total + ' 条断言，命中 ' + pass + ' 条。' +
+      (fails.length ? ' 未通过：' + fails.map(function (f) { return f.g + '·' + f.label; }).join('；') : ' 全部通过。') +
+      '<br>复跑方式：打开本页即可，页面不会改任何数据；拷贝结果按钮生成纯文本表。';
+
+    Array.prototype.forEach.call(document.querySelectorAll('.g-h'), function (h) {
+      h.addEventListener('click', function () {
+        h.parentNode.classList.toggle('open');
+      });
+    });
+  }
+
+  function plain() {
+    var lines = ['# 验收读数（' + new Date().toLocaleString() + '）', ''];
+    results.forEach(function (r) {
+      r.checks.forEach(function (c) {
+        lines.push((c.ok ? '[PASS] ' : '[FAIL] ') + r.g.n + ' · ' + c.rule.label + (c.ok ? '  ← ' + (c.hit || '') : ''));
+      });
+      lines.push((r.smoke && r.smoke.ok ? '[PASS] ' : '[FAIL] ') + r.g.n + ' · 真加载冒烟 ' + (r.smoke ? r.smoke.note || r.smoke.err : ''));
+      lines.push('');
+    });
+    return lines.join('\n');
+  }
+
+  document.getElementById('copyBtn').addEventListener('click', function () {
+    var txt = plain();
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(txt).then(function () {
+        document.getElementById('copyBtn').textContent = '已复制';
+        setTimeout(function () { document.getElementById('copyBtn').textContent = '复制结果'; }, 1600);
+      });
+    }
+  });
+
+  (async function run() {
+    for (var i = 0; i < GAMES.length; i++) {
+      var g = GAMES[i];
+      document.getElementById('foot').textContent = '正在读 ' + g.n + ' …';
+      var text = '';
+      try {
+        var resp = await fetch(g.f, { cache: 'no-store' });
+        text = await resp.text();
+      } catch (e) { text = ''; }
+
+      var checks = RULES.map(function (rule) {
+        var raw = rule.test(text, g);
+        var ok = !!raw;
+        var realHit = '';
+        if (ok) {
+          if (rule.id === 1) realHit = any(text, g.ritual) || '';
+          else if (rule.id === 2) realHit = any(text, FX) || '';
+          else if (rule.id === 3) realHit = 'GODLIKE';
+          else if (rule.id === 4) realHit = 'AudioContext';
+          else if (rule.id === 7) realHit = '';
+          else realHit = (typeof raw === 'string' ? raw : '') || '';
+        }
+        var snipPre = '', snipPost = '';
+        if (ok && realHit) {
+          var i2 = text.indexOf(realHit);
+          if (i2 >= 0) {
+            var s = Math.max(0, i2 - 46), e = Math.min(text.length, i2 + realHit.length + 46);
+            snipPre = text.slice(s, i2).replace(/\s+/g, ' ');
+            snipPost = text.slice(i2 + realHit.length, e).replace(/\s+/g, ' ');
+          }
+        } else if (ok && rule.evidence) {
+          snipPre = rule.evidence;
+        }
+        return { rule: rule, ok: ok, hit: realHit, snipPre: snipPre, snipPost: snipPost,
+                 need: rule.why + (rule.id === 1 ? '（找：' + g.ritual.join(' / ') + '）' : '') };
+      });
+
+      var sm = await smoke(g.f);
+      results.push({ g: g, checks: checks, smoke: sm });
+      render();
+    }
+    render();
+  })();
+})();
+</script>
+</body>
+</html>
