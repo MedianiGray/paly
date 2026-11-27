@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>打字冲刺 · paly</title>
+<meta name="theme-color" content="#0b0e11">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><path d='M7 8h18M7 15h18M7 22h11' stroke='%2335e0c8' stroke-width='2'/><circle cx='25' cy='23' r='3' fill='%23ffb347'/></svg>">
+<style>
+:root{
+  --bg:#0b0e11; --panel:#12171c; --line:#222b33; --ink:#e9eff5; --dim:#8b98a5;
+  --accent:#35e0c8; --accent-2:#ffb347; --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh;
+  background:radial-gradient(900px 600px at 50% -10%,rgba(53,224,200,.08),transparent 65%),var(--bg);
+  color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  padding:16px 16px calc(18px + env(safe-area-inset-bottom));
+  -webkit-font-smoothing:antialiased; overscroll-behavior:none;
+}
+.bar{width:min(100%,460px); display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px}
+.back{
+  display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid var(--line);
+  border-radius:10px; color:var(--dim); text-decoration:none; font-size:13px; background:var(--panel);
+  transition:color .18s,border-color .18s;
+}
+.back:hover{color:var(--ink); border-color:rgba(53,224,200,.4)}
+.title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase}
+.hud{width:min(100%,460px); display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin-bottom:12px}
+.stat{
+  flex:1 1 80px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);
+  display:flex; align-items:baseline; justify-content:space-between; gap:8px;
+}
+.stat .label{font-size:11.5px; letter-spacing:.1em; color:#6f7d8a; white-space:nowrap}
+.stat strong{font-family:var(--mono); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums}
+.stat.best strong{color:var(--accent-2)}
+.stat.time strong{color:var(--accent)}
+.goal{
+  width:min(100%,460px); margin:0 0 12px; padding:9px 13px;
+  border-left:2px solid rgba(255,179,71,.5); background:rgba(18,23,28,.6);
+  font-size:12.5px; color:#8b98a5; line-height:1.6;
+}
+.goal b{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--accent-2); margin-right:8px}
+
+.text{
+  width:min(100%,460px); padding:14px 16px; border:1px solid var(--line); border-radius:14px;
+  background:var(--panel); font-size:clamp(15px,4.4vw,18px); line-height:2.05;
+  letter-spacing:.03em; color:#5e6b77;
+}
+.text span{transition:color .1s}
+.text .ok{color:var(--accent)}
+.text .bad{color:#ff6b57; background:rgba(255,107,87,.14); border-radius:3px}
+.text .cur{color:var(--accent-2); border-bottom:2px solid var(--accent-2)}
+
+.field{
+  width:min(100%,460px); margin-top:12px; display:block; padding:12px 14px;
+  border:1px solid var(--line); border-radius:12px; background:#0d1216; color:var(--ink);
+  font-family:inherit; font-size:clamp(14px,4vw,16px); line-height:1.6; resize:none;
+  outline:none; transition:border-color .18s;
+}
+.field:focus{border-color:rgba(53,224,200,.45)}
+.field:disabled{opacity:.55}
+
+.result{
+  width:min(100%,460px); margin-top:12px; padding:11px 14px; border:1px solid var(--line);
+  border-radius:12px; background:var(--panel); display:flex; align-items:center; justify-content:space-between; gap:12px;
+  font-size:13px; color:var(--dim); line-height:1.5;
+}
+.result[hidden]{display:none!important}
+.result.win{border-color:rgba(53,224,200,.45); color:var(--ink)}
+.again{
+  flex:0 0 auto; padding:7px 14px; border-radius:9px; border:1px solid rgba(53,224,200,.4);
+  background:transparent; color:var(--accent); font-family:var(--mono); font-size:12px; letter-spacing:.1em;
+  cursor:pointer; transition:background .18s;
+}
+.again:hover{background:rgba(53,224,200,.1)}
+
+.hint{width:min(100%,460px); margin:12px 0 0; color:#5c6772; font-size:12.5px; line-height:1.7; text-align:center}
+@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <a class="back" href="../index.html">← 返回</a>
+  <span class="title">Typing Sprint</span>
+</div>
+
+<div class="hud">
+  <div class="stat time"><span class="label">剩余</span><strong id="left">60.0s</strong></div>
+  <div class="stat"><span class="label">打对</span><strong id="score">0 字</strong></div>
+  <div class="stat best"><span class="label">最佳</span><strong id="best">—</strong></div>
+</div>
+
+<p class="goal"><b>目标</b>照抄下面这段，一分钟内数你打对了多少字。打错就停在那，改对了才能继续往下走；时间一到立刻停手。</p>
+
+<div class="text" id="text" aria-label="要打的内容"></div>
+
+<textarea class="field" id="input" rows="2" spellcheck="false" autocomplete="off"
+          autocorrect="off" autocapitalize="off" placeholder="点进来，从这里开始照抄"></textarea>
+
+<div class="result" id="result" hidden>
+  <span id="resultText"></span>
+  <button class="again" id="again" type="button">再来一次</button>
+</div>
+
+<p class="hint">中文输入法直接打，标点也照原样；不许粘贴。开始敲第一个字就计时。</p>
+
+<script>
+(function () {
+  'use strict';
+
+  var DURATION = 60000;
+  var BEST_KEY = 'paly.typing.best';
+
+  var PASSAGES = [
+    '网络工程这门手艺，说到底是在数据从一台机器走到另一台机器的路上做判断。知道包往哪走、为什么绕路、在哪一段丢了，比背下几十条命令更要紧。命令可以查，判断只能自己练。',
+    '实训室里最值钱的不是设备，是你能重来多少次。系统装崩了，再装一遍；服务起不来，再翻一眼日志。每一次重来都比上一次快一点，这就是手感。',
+    '排查问题从最笨的地方开始：线有没有插、服务有没有起、路径写得对不对、权限给没给。这些看着不像技术，实际上八成的故障都在这四件事里。',
+    '写代码之前先把目录想清楚，哪个文件放哪、谁读谁写。想清楚了再动手，改起来才不慌；想不清楚就先写，最后一定会在某个半夜对着一个找不到的文件发呆。'
+  ];
+
+  var textEl = document.getElementById('text');
+  var inputEl = document.getElementById('input');
+  var leftEl = document.getElementById('left');
+  var scoreEl = document.getElementById('score');
+  var bestEl = document.getElementById('best');
+  var resultEl = document.getElementById('result');
+  var resultTextEl = document.getElementById('resultText');
+  var againEl = document.getElementById('again');
+
+  var target = '';
+  var spans = [];
+  var correct = 0;
+  var best = 0;
+  var running = false;
+  var finished = false;
+  var t0 = 0;
+  var tick = 0;
+  var composing = false;
+  var lastIdx = -1;
+
+  try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) { best = 0; }
+
+  function renderBest() {
+    bestEl.textContent = best ? best + ' 字' : '—';
+  }
+
+  function pickPassage() {
+    if (PASSAGES.length === 1) return PASSAGES[0];
+    var idx = Math.floor(Math.random() * PASSAGES.length);
+    if (idx === lastIdx) idx = (idx + 1) % PASSAGES.length;
+    lastIdx = idx;
+    return PASSAGES[idx];
+  }
+
+  function buildText() {
+    textEl.innerHTML = '';
+    spans = [];
+    target = pickPassage();
+    for (var i = 0; i < target.length; i++) {
+      var s = document.createElement('span');
+      s.textContent = target[i];
+      textEl.appendChild(s);
+      spans.push(s);
+    }
+  }
+
+  function paint() {
+    var v = inputEl.value;
+    var n = v.length;
+    var i = 0;
+    while (i < n && i < target.length && v[i] === target[i]) i++;
+    correct = i;
+
+    for (var k = 0; k < spans.length; k++) {
+      var cls = '';
+      if (k < i) cls = 'ok';
+      else if (k < n) cls = 'bad';
+      else if (k === i && running) cls = 'cur';
+      spans[k].className = cls;
+    }
+    scoreEl.textContent = i + ' 字';
+
+    if (i === target.length && running) finish(true);
+  }
+
+  function startClock() {
+    running = true;
+    t0 = performance.now();
+    tick = setInterval(function () {
+      var remain = DURATION - (performance.now() - t0);
+      if (remain <= 0) { finish(); return; }
+      leftEl.textContent = (remain / 1000).toFixed(1) + 's';
+    }, 100);
+  }
+
+  function finish(complete) {
+    if (finished) return;
+    finished = true;
+    running = false;
+    clearInterval(tick);
+    leftEl.textContent = '0.0s';
+    inputEl.disabled = true;
+
+    var ms = Math.max(1, Math.round(performance.now() - t0));
+    var isBest = !best || correct > best;
+    if (isBest && correct > 0) {
+      best = correct;
+      renderBest();
+      try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
+    }
+    paint();
+
+    resultEl.hidden = false;
+    resultEl.className = 'result win';
+    var head = complete
+      ? '整段打完 · ' + correct + ' 字 · ' + (ms / 1000).toFixed(1) + 's'
+      : '一分钟到，打对 ' + correct + ' 字';
+    resultTextEl.textContent = head + (isBest && correct > 0 ? ' · 新纪录' : '');
+  }
+
+  function restart() {
+    clearInterval(tick);
+    running = false;
+    finished = false;
+    composing = false;
+    correct = 0;
+    inputEl.disabled = false;
+    inputEl.value = '';
+    leftEl.textContent = '60.0s';
+    scoreEl.textContent = '0 字';
+    resultEl.hidden = true;
+    buildText();
+    paint();
+    inputEl.focus();
+  }
+
+  inputEl.addEventListener('compositionstart', function () { composing = true; });
+  inputEl.addEventListener('compositionend', function () {
+    composing = false;
+    if (!finished) paint();
+  });
+
+  inputEl.addEventListener('input', function () {
+    if (finished) return;
+    if (!running) startClock();
+    if (composing) return;      // 选词过程中不判，避免拼音字母闪红
+    if (inputEl.value.length > target.length) {
+      inputEl.value = inputEl.value.slice(0, target.length);
+    }
+    paint();
+  });
+
+  inputEl.addEventListener('paste', function (e) {
+    e.preventDefault();
+  });
+
+  againEl.addEventListener('click', function () { restart(); });
+
+  renderBest();
+  buildText();
+  paint();
+})();
+</script>
+</body>
+</html>
