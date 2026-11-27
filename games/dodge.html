@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>躲避 · paly</title>
+<title>躲避 · Pro Max</title>
 <meta name="theme-color" content="#0b0e11">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><rect x='12' y='21' width='9' height='3' rx='1.5' fill='%2335e0c8'/><rect x='14' y='6' width='4' height='4' fill='%23ffb347'/><rect x='8' y='12' width='5' height='4' fill='%23ffb347'/></svg>">
 <style>
@@ -20,14 +20,21 @@ body{
   padding:16px 16px calc(18px + env(safe-area-inset-bottom));
   -webkit-font-smoothing:antialiased; overscroll-behavior:none;
 }
-.bar{width:min(100%,460px); display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px}
+.bar{width:min(100%,460px); display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px}
 .back{
   display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid var(--line);
   border-radius:10px; color:var(--dim); text-decoration:none; font-size:13px; background:var(--panel);
   transition:color .18s,border-color .18s;
 }
 .back:hover{color:var(--ink); border-color:rgba(53,224,200,.4)}
-.title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase}
+.title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase; margin-left:auto; margin-right:6px}
+button{
+  font-family:inherit; font-size:13px; color:#c6d3de; background:var(--panel);
+  border:1px solid var(--line); border-radius:12px; padding:0 12px; cursor:pointer;
+  transition:border-color .18s,color .18s; -webkit-tap-highlight-color:transparent;
+}
+button:hover{border-color:rgba(53,224,200,.45); color:var(--ink)}
+button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 .hud{width:min(100%,460px); display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin-bottom:12px}
 .stat{
   flex:1 1 88px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);
@@ -51,14 +58,30 @@ body{
 .stage canvas{display:block; width:100%; height:auto; touch-action:none}
 .overlay{
   position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
-  gap:8px; padding:24px; text-align:center; background:rgba(11,14,17,.88);
+  gap:6px; padding:22px; text-align:center; background:rgba(11,14,17,.9);
+  backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px);
   transition:opacity .2s;
 }
 .overlay.hidden{opacity:0; pointer-events:none}
-.ov-title{font-size:clamp(22px,6vw,32px); font-weight:650; margin:0; line-height:1.2}
-.ov-title .unit{font-family:var(--mono); font-size:16px; color:#7b8894; margin-left:6px}
-.ov-sub{margin:0; font-size:14px; color:#8b98a5; max-width:20em; line-height:1.6}
-.ov-sub.new{color:var(--accent-2); font-family:var(--mono); font-size:12.5px; letter-spacing:.12em}
+.rank{font-family:var(--mono); font-size:clamp(22px,7vw,32px); font-weight:700; letter-spacing:.06em; line-height:1}
+.rank.god{color:#ffd166; text-shadow:0 0 26px rgba(255,209,102,.6)}
+.rank.inv{color:var(--accent); text-shadow:0 0 20px rgba(53,224,200,.45)}
+.rank.str{color:#9fd2ff}
+.rank.sol{color:#c6d3de}
+.rank.warm{color:#8b98a5}
+.rankcn{font-size:11.5px; letter-spacing:.14em; color:#6f7d8a}
+.ov-title{font-size:clamp(20px,5.6vw,28px); font-weight:650; margin:2px 0 0; line-height:1.2}
+.ov-title .unit{font-family:var(--mono); font-size:16px; color:#7b8894; margin-left:2px}
+.grid3{display:grid; grid-template-columns:repeat(3,1fr); gap:6px; width:100%; margin-top:6px}
+.grid3 div{background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.06); border-radius:9px; padding:6px 4px}
+.grid3 span{display:block; font-size:10.5px; letter-spacing:.08em; color:#6f7d8a}
+.grid3 b{display:block; font-family:var(--mono); font-size:15px; margin-top:3px; color:#dfe9f2}
+.tbl{width:100%; margin-top:4px; font-family:var(--mono); font-size:11px}
+.tbl .row{display:grid; grid-template-columns:20px 1fr 58px; gap:6px; align-items:baseline; padding:2px 6px; border-radius:6px; color:#7b8894}
+.tbl .row.head{color:#556370; font-size:10px; letter-spacing:.08em}
+.tbl .row.now{background:rgba(53,224,200,.12); color:#bff7ee}
+.tbl .row i{font-style:normal; color:#556370}
+.tbl .row span:nth-child(3){text-align:right}
 .ov-tip{font-family:var(--mono); font-size:11.5px; letter-spacing:.12em; color:#6f7d8a; margin-top:6px}
 
 .hint{width:min(100%,460px); margin:14px 0 0; color:#5c6772; font-size:12.5px; line-height:1.7; text-align:center}
@@ -69,7 +92,8 @@ body{
 
 <div class="bar">
   <a class="back" href="../index.html">← 返回</a>
-  <span class="title">Dodge</span>
+  <span class="title">Dodge · Pro Max</span>
+  <button id="soundBtn" type="button">音效 开</button>
 </div>
 
 <div class="hud">
@@ -77,25 +101,31 @@ body{
   <div class="stat best"><span class="label">最久</span><strong id="best">—</strong></div>
 </div>
 
-<p class="goal"><b>目标</b>左右移动，躲开从上往下落的块。被砸中就结束，活得越久越强。</p>
+<p class="goal"><b>目标</b>左右移动躲开落块。被砸中就结束，活得越久评级越高。</p>
 
 <div class="stage">
   <canvas id="cv" aria-label="躲避游戏区域"></canvas>
   <div class="overlay" id="overlay">
+    <div class="rank" id="ovRank"></div>
+    <div class="rankcn" id="ovRankCn"></div>
     <p class="ov-title" id="ovTitle">准备</p>
-    <p class="ov-sub" id="ovSub">点一下开始。左右移动，别被砸中。</p>
-    <p class="ov-tip" id="ovTip">鼠标拖动 / 手指拖动 / ← →</p>
+    <div class="grid3" id="ovStats"></div>
+    <div class="tbl" id="ovRuns"></div>
+    <p class="ov-tip" id="ovTip">点一下开始</p>
   </div>
 </div>
 
-<p class="hint">落块只会往下掉，缝隙一直在。手指放在屏幕下半部分拖、或按 ← →，都行。</p>
+<p class="hint">落块只会往下掉，缝隙一直在。手指放在下半部分拖、或按 ← →，都行。</p>
 
 <script>
 (function () {
   'use strict';
 
   var BEST_KEY = 'paly.dodge.best';
+  var RUNS_KEY = 'paly.dodge.runs';
+  var SOUND_KEY = 'paly.dodge.sound';
   var W = 420, H = 520;
+  var CD_MS = 520;
 
   var canvas = document.getElementById('cv');
   var ctx = canvas.getContext('2d');
@@ -105,11 +135,15 @@ body{
   var surviveEl = document.getElementById('survive');
   var bestEl = document.getElementById('best');
   var overlay = document.getElementById('overlay');
+  var ovRank = document.getElementById('ovRank');
+  var ovRankCn = document.getElementById('ovRankCn');
   var ovTitle = document.getElementById('ovTitle');
-  var ovSub = document.getElementById('ovSub');
+  var ovStats = document.getElementById('ovStats');
+  var ovRuns = document.getElementById('ovRuns');
   var ovTip = document.getElementById('ovTip');
+  var soundBtn = document.getElementById('soundBtn');
 
-  var state = 'ready';       // ready | running | over
+  var state = 'ready';       // ready | countdown | running | dying | over
   var elapsed = 0;           // 单位 ms
   var lastT = 0;
   var spawnAcc = 0;
@@ -117,10 +151,60 @@ body{
   var best = 0;
   var blocks = [];
   var lastX = W / 2;
+  var cdStart = 0, cdShown = -1;
+  var milestone = 0;
+  var flash = 0, flashColor = '255,255,255';
+  var shake = 0;
+  var parts = [];
+  var trail = [];
+  var dieTimer = 0;
 
   var player = { x: W / 2, w: 46, h: 16, y: H - 54 };
   var keys = { left: false, right: false };
 
+  /* ---------- 音效 ---------- */
+  var AC = null, soundOn = true;
+  try { if (localStorage.getItem(SOUND_KEY) === '0') soundOn = false; } catch (e) {}
+  function renderSoundBtn() { soundBtn.textContent = '音效 ' + (soundOn ? '开' : '关'); }
+  renderSoundBtn();
+
+  function ac() {
+    if (!AC) {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      AC = new C();
+    }
+    if (AC.state === 'suspended') { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+
+  function tone(freq, dur, type, vol, delay, glideTo) {
+    if (!soundOn) return;
+    var a = ac(); if (!a) return;
+    var t0 = a.currentTime + (delay || 0);
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0);
+    if (glideTo) { try { o.frequency.exponentialRampToValueAtTime(glideTo, t0 + dur); } catch (e) {} }
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.linearRampToValueAtTime(vol, t0 + Math.min(dur * 0.3, 0.02));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t0); o.stop(t0 + dur + 0.03);
+  }
+
+  function sfxCd(n) { tone(420 + (3 - n) * 80, 0.09, 'square', 0.055); }
+  function sfxGo() { tone(900, 0.12, 'triangle', 0.09); tone(1220, 0.14, 'triangle', 0.07, 0.06); }
+  function sfxNear() { tone(620, 0.06, 'sine', 0.045, 0, 500); }
+  function sfxCrash() {
+    tone(150, 0.4, 'sawtooth', 0.11, 0, 70);
+    tone(88, 0.45, 'square', 0.08, 0.04, 44);
+  }
+  function sfxMark() { tone(760, 0.12, 'triangle', 0.08); tone(1010, 0.13, 'sine', 0.06, 0.07); }
+  function sfxOver() { tone(200, 0.4, 'sine', 0.07, 0, 110); }
+  function sfxBest() { tone(880, 0.14, 'sine', 0.1); tone(1320, 0.18, 'sine', 0.08, 0.12); }
+
+  /* ---------- 记录 ---------- */
   try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) { best = 0; }
   renderBest();
 
@@ -128,6 +212,48 @@ body{
     bestEl.textContent = best ? (best / 1000).toFixed(1) + 's' : '—';
   }
 
+  function readRuns() {
+    try {
+      var raw = localStorage.getItem(RUNS_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (x) { return x && typeof x.ms === 'number'; })
+                .sort(function (a, b) { return b.ms - a.ms; })
+                .slice(0, 5);
+    } catch (e) { return []; }
+  }
+
+  function pushRun(run) {
+    var list = readRuns();
+    list.push(run);
+    list.sort(function (a, b) { return b.ms - a.ms; });
+    list = list.slice(0, 5);
+    try { localStorage.setItem(RUNS_KEY, JSON.stringify(list)); } catch (e) {}
+    return list;
+  }
+
+  function rankOf(ms) {
+    var s = ms / 1000;
+    if (s >= 60) return { k: 'god', n: 'GODLIKE', cn: '神级闪避' };
+    if (s >= 40) return { k: 'inv', n: 'INVINCIBLE', cn: '打不中' };
+    if (s >= 25) return { k: 'str', n: 'STRONG', cn: '有硬实力' };
+    if (s >= 12) return { k: 'sol', n: 'SOLID', cn: '稳得住' };
+    return { k: 'warm', n: 'WARMUP', cn: '闪不开' };
+  }
+
+  function renderRuns(list, runId) {
+    if (!list.length) { ovRuns.innerHTML = ''; return; }
+    var html = '<div class="row head"><i>#</i><span>存活</span><span>评级</span></div>';
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      html += '<div class="row' + (runId && r.id === runId ? ' now' : '') + '">' +
+        '<i>' + (i + 1) + '</i><span>' + (r.ms / 1000).toFixed(1) + 's</span>' +
+        '<span>' + rankOf(r.ms).n + '</span></div>';
+    }
+    ovRuns.innerHTML = html;
+  }
+
+  /* ---------- 难度曲线 ---------- */
   function speedAt(ms) {
     return 0.05 + Math.min(0.15, (ms / 30000) * 0.15);     // 50 -> 200 px/s
   }
@@ -141,30 +267,56 @@ body{
     var nx = Math.random() * (W - w);
     if (Math.abs(nx - lastX) < 36) { nx = (nx + 130) % (W - w); }
     lastX = nx;
-    blocks.push({ x: nx, y: -28, w: w, h: 22, vy: speedAt(elapsed) });
+    blocks.push({ x: nx, y: -28, w: w, h: 22, vy: speedAt(elapsed), passed: false });
   }
 
   function reset() {
     blocks = [];
+    parts = [];
+    trail = [];
     elapsed = 0;
     spawnAcc = 0;
+    milestone = 0;
+    flash = 0;
+    shake = 0;
     lastX = W / 2;
     player.x = W / 2;
     surviveEl.textContent = '0.0s';
+    clearTimeout(dieTimer);
+  }
+
+  function burst(x, y, n, aCol, bCol) {
+    for (var i = 0; i < n; i++) {
+      var a = Math.random() * Math.PI * 2, sp = 60 + Math.random() * 260;
+      parts.push({
+        x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 60,
+        life: 0, ttl: 0.5 + Math.random() * 0.5,
+        size: 2 + Math.random() * 3, c: Math.random() < 0.6 ? aCol : bCol
+      });
+    }
+    if (parts.length > 260) parts.splice(0, parts.length - 260);
   }
 
   function start() {
     reset();
-    state = 'running';
+    state = 'countdown';
+    cdStart = performance.now();
+    cdShown = -1;
     overlay.className = 'overlay hidden';
-    lastT = performance.now();
+    lastT = 0;
     cancelAnimationFrame(rafId);
     rafId = requestAnimationFrame(loop);
   }
 
   function gameOver() {
-    state = 'over';
-    cancelAnimationFrame(rafId);
+    state = 'dying';
+    shake = 12;
+    flash = 1;
+    flashColor = '255,90,60';
+    sfxCrash();
+    burst(player.x, player.y + player.h / 2, 34, '#7ff0dc', '#ffd166');
+    burst(player.x, player.y, 14, '#ff8a6b', '#ffb347');
+
     var ms = Math.max(1, Math.round(elapsed));
     var isBest = !best || ms > best;
     if (isBest) {
@@ -172,15 +324,39 @@ body{
       renderBest();
       try { localStorage.setItem(BEST_KEY, String(best)); } catch (e) {}
     }
-    ovTitle.innerHTML = (ms / 1000).toFixed(1) + '<span class="unit">s</span>';
-    ovSub.className = 'ov-sub' + (isBest ? ' new' : '');
-    ovSub.textContent = isBest ? '最久的一次 · 新纪录' : '被砸中了 · 最久还是 ' + (best / 1000).toFixed(1) + 's';
-    ovTip.textContent = '点一下再来一局';
-    overlay.className = 'overlay';
+    var run = { ms: ms, at: Date.now(), id: Date.now() + '-' + Math.random().toString(36).slice(2, 8) };
+    var list = pushRun(run);
+
+    dieTimer = setTimeout(function () {
+      state = 'over';
+      cancelAnimationFrame(rafId);
+      var rk = rankOf(ms);
+      ovRank.className = 'rank ' + rk.k;
+      ovRank.textContent = rk.n;
+      ovRankCn.textContent = rk.cn;
+      ovTitle.innerHTML = (ms / 1000).toFixed(1) + '<span class="unit">s</span>';
+      ovStats.innerHTML =
+        '<div><span>存活</span><b>' + (ms / 1000).toFixed(1) + 's</b></div>' +
+        '<div><span>最久</span><b>' + (best / 1000).toFixed(1) + 's</b></div>' +
+        '<div><span>挡下</span><b>' + milestone + '</b></div>';
+      renderRuns(list, run.id);
+      ovTip.textContent = isBest ? '新纪录 · 点一下再来' : '点一下再来一局';
+      overlay.className = 'overlay';
+      sfxOver();
+      if (isBest) sfxBest();
+    }, 260);
   }
 
   function update(dt) {
     elapsed += dt;
+
+    // 里程碑：每 10 秒闪一下，只做标记，不给任何加成
+    if (elapsed >= (milestone + 1) * 10000) {
+      milestone += 1;
+      flash = 0.55;
+      flashColor = '53,224,200';
+      sfxMark();
+    }
 
     // 键盘移动
     var dx = 0;
@@ -211,14 +387,27 @@ body{
         gameOver();
         return;
       }
+
+      // 擦身而过：本来差一点就砸中，给一声轻响
+      if (!b.passed && b.y + b.h > player.y + player.h) {
+        b.passed = true;
+        var bcx = b.x + b.w / 2;
+        if (Math.abs(bcx - player.x) < 68) {
+          sfxNear();
+          burst(bcx, player.y + player.h, 5, '#7ff0dc', '#8fb7c9');
+        }
+      }
     }
 
     surviveEl.textContent = (elapsed / 1000).toFixed(1) + 's';
   }
 
   function draw() {
+    ctx.save();
+    if (shake > 0.5) ctx.translate((Math.random() - 0.5) * shake, (Math.random() - 0.5) * shake);
+
     ctx.fillStyle = '#0f1419';
-    ctx.fillRect(0, 0, W, H);
+    ctx.fillRect(-20, -20, W + 40, H + 40);
 
     // 淡淡的地面网格
     ctx.strokeStyle = '#161d24';
@@ -230,35 +419,120 @@ body{
       ctx.stroke();
     }
 
-    // 落块
+    // 落块（带底部拖影）
     for (var i = 0; i < blocks.length; i++) {
       var b = blocks[i];
-      ctx.fillStyle = 'rgba(255,179,71,.92)';
-      ctx.fillRect(b.x, b.y, b.w, b.h);
+      ctx.fillStyle = 'rgba(255,179,71,.10)';
+      ctx.fillRect(b.x - 3, b.y + b.h, b.w + 6, 16);
       ctx.fillStyle = 'rgba(255,179,71,.14)';
-      ctx.fillRect(b.x - 3, b.y - 3, b.w + 6, b.h + 6);
+      ctx.fillRect(b.x - 4, b.y - 4, b.w + 8, b.h + 8);
+      var grd = ctx.createLinearGradient(b.x, b.y, b.x, b.y + b.h);
+      grd.addColorStop(0, 'rgba(255,214,140,.95)');
+      grd.addColorStop(1, 'rgba(255,163,60,.9)');
+      ctx.fillStyle = grd;
+      ctx.fillRect(b.x, b.y, b.w, b.h);
     }
 
+    // 玩家拖尾
+    for (var t = 0; t < trail.length; t++) {
+      var age = (t + 1) / (trail.length + 1);
+      ctx.globalAlpha = age * 0.3;
+      ctx.fillStyle = '#35e0c8';
+      ctx.fillRect(trail[t] - player.w / 2, player.y, player.w, player.h);
+    }
+    ctx.globalAlpha = 1;
+
     // 玩家
-    ctx.fillStyle = '#35e0c8';
-    ctx.fillRect(player.x - player.w / 2, player.y, player.w, player.h);
     ctx.fillStyle = 'rgba(53,224,200,.13)';
     ctx.fillRect(player.x - player.w / 2 - 4, player.y - 4, player.w + 8, player.h + 8);
+    var pgr = ctx.createLinearGradient(player.x - player.w / 2, player.y, player.x + player.w / 2, player.y + player.h);
+    pgr.addColorStop(0, '#8ff6e8');
+    pgr.addColorStop(1, '#1fb9a4');
+    ctx.fillStyle = pgr;
+    ctx.fillRect(player.x - player.w / 2, player.y, player.w, player.h);
+
+    // 粒子
+    for (var k = 0; k < parts.length; k++) {
+      var p = parts[k];
+      var kk = 1 - p.life / p.ttl;
+      ctx.globalAlpha = Math.max(0, kk);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(p.x - p.size / 2, p.y - p.size / 2, p.size, p.size);
+    }
+    ctx.globalAlpha = 1;
+
+    // 倒计时
+    if (state === 'countdown') {
+      var idx = Math.min(3, Math.floor((performance.now() - cdStart) / CD_MS));
+      var label = idx >= 3 ? 'GO' : String(3 - idx);
+      ctx.textAlign = 'center';
+      ctx.font = '700 ' + (idx >= 3 ? 56 : 72) + 'px ui-monospace,Consolas,monospace';
+      ctx.fillStyle = idx >= 3 ? 'rgba(53,224,200,.9)' : 'rgba(255,209,102,.85)';
+      ctx.fillText(label, W / 2, H * 0.42);
+    }
+
+    // 里程碑刻度（右侧横条，越久越满）
+    if (state === 'running' || state === 'dying') {
+      var pct = Math.min(1, elapsed / 60000);
+      ctx.fillStyle = 'rgba(53,224,200,.12)';
+      ctx.fillRect(W - 12, 40, 3, H - 110);
+      ctx.fillStyle = 'rgba(53,224,200,.65)';
+      ctx.fillRect(W - 12, 40 + (H - 110) * (1 - pct), 3, (H - 110) * pct);
+    }
+
+    if (flash > 0) {
+      ctx.fillStyle = 'rgba(' + flashColor + ',' + (flash * 0.3) + ')';
+      ctx.fillRect(-20, -20, W + 40, H + 40);
+    }
+
+    ctx.restore();
+  }
+
+  function stepFx(dt) {
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var p = parts[i];
+      p.life += dt / 1000;
+      if (p.life >= p.ttl) { parts.splice(i, 1); continue; }
+      p.vy += 220 * dt / 1000;
+      p.x += p.vx * dt / 1000;
+      p.y += p.vy * dt / 1000;
+    }
+    flash = Math.max(0, flash - dt / 320);
+    shake = Math.max(0, shake - dt / 55);
+    while (trail.length > 7) trail.shift();
   }
 
   function loop(now) {
+    if (!lastT) lastT = now;
     var dt = Math.min(40, now - lastT);
     lastT = now;
-    if (state === 'running') {
+
+    stepFx(dt);
+
+    if (state === 'countdown') {
+      var idx = Math.floor((now - cdStart) / CD_MS);
+      if (idx > 3) {
+        state = 'running';
+        sfxGo();
+        flash = 0.7;
+        flashColor = '53,224,200';
+      } else if (idx !== cdShown) {
+        cdShown = idx;
+        if (idx < 3) sfxCd(idx);
+      }
+    } else if (state === 'running') {
       update(dt);
-      if (state !== 'running') { draw(); return; }
+      if (state === 'running') {
+        trail.push(player.x);
+      }
     }
+
     draw();
     rafId = requestAnimationFrame(loop);
   }
 
   function onPointer(e) {
-    if (state !== 'running') { return; }
+    if (state !== 'running') return;
     var rect = canvas.getBoundingClientRect();
     var lx = (e.clientX - rect.left) / rect.width * W;
     player.x = Math.max(player.w / 2, Math.min(W - player.w / 2, lx));
@@ -267,10 +541,10 @@ body{
   canvas.addEventListener('pointermove', onPointer);
   canvas.addEventListener('pointerdown', function (e) {
     if (state === 'running') { onPointer(e); return; }
-    start();
+    if (state === 'ready' || state === 'over') start();
   });
   overlay.addEventListener('click', function () {
-    if (state !== 'running') start();
+    if (state === 'ready' || state === 'over') start();
   });
 
   document.addEventListener('keydown', function (e) {
@@ -278,12 +552,20 @@ body{
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') { keys.right = true; e.preventDefault(); }
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
-      if (state !== 'running') start();
+      if (state === 'ready' || state === 'over') start();
     }
+    if (e.key === 'r' || e.key === 'R') { if (state !== 'running') start(); }
   });
   document.addEventListener('keyup', function (e) {
     if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
     if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+  });
+
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn;
+    renderSoundBtn();
+    try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch (e) {}
+    if (soundOn) tone(720, 0.1, 'triangle', 0.06);
   });
 
   draw();

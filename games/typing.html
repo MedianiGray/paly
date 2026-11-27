@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>打字冲刺 · paly</title>
+<title>打字冲刺 · Pro Max</title>
 <meta name="theme-color" content="#0b0e11">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><path d='M7 8h18M7 15h18M7 22h11' stroke='%2335e0c8' stroke-width='2'/><circle cx='25' cy='23' r='3' fill='%23ffb347'/></svg>">
 <style>
@@ -20,23 +20,30 @@ body{
   padding:16px 16px calc(18px + env(safe-area-inset-bottom));
   -webkit-font-smoothing:antialiased; overscroll-behavior:none;
 }
-.bar{width:min(100%,460px); display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:14px}
+.bar{width:min(100%,460px); display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px}
 .back{
   display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid var(--line);
   border-radius:10px; color:var(--dim); text-decoration:none; font-size:13px; background:var(--panel);
   transition:color .18s,border-color .18s;
 }
 .back:hover{color:var(--ink); border-color:rgba(53,224,200,.4)}
-.title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase}
+.title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a; text-transform:uppercase; margin-left:auto; margin-right:6px}
+button{
+  font-family:inherit; font-size:13px; color:#c6d3de; background:var(--panel);
+  border:1px solid var(--line); border-radius:12px; padding:0 12px; cursor:pointer;
+  transition:border-color .18s,color .18s; -webkit-tap-highlight-color:transparent;
+}
+button:hover{border-color:rgba(53,224,200,.45); color:var(--ink)}
+button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 .hud{width:min(100%,460px); display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin-bottom:12px}
 .stat{
   flex:1 1 80px; min-width:0; padding:9px 13px; border:1px solid var(--line); border-radius:12px; background:var(--panel);
   display:flex; align-items:baseline; justify-content:space-between; gap:8px;
 }
 .stat .label{font-size:11.5px; letter-spacing:.1em; color:#6f7d8a; white-space:nowrap}
-.stat strong{font-family:var(--mono); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums}
-.stat.best strong{color:var(--accent-2)}
+.stat strong{font-family:var(--mono); font-size:19px; font-weight:600; font-variant-numeric:tabular-nums; white-space:nowrap}
 .stat.time strong{color:var(--accent)}
+.stat.best strong{color:var(--accent-2); font-size:15px}
 .goal{
   width:min(100%,460px); margin:0 0 12px; padding:9px 13px;
   border-left:2px solid rgba(255,179,71,.5); background:rgba(18,23,28,.6);
@@ -44,15 +51,28 @@ body{
 }
 .goal b{font-family:var(--mono); font-size:11px; letter-spacing:.14em; color:var(--accent-2); margin-right:8px}
 
+.stage{position:relative; width:min(100%,460px)}
 .text{
-  width:min(100%,460px); padding:14px 16px; border:1px solid var(--line); border-radius:14px;
+  position:relative; padding:14px 16px; border:1px solid var(--line); border-radius:14px;
   background:var(--panel); font-size:clamp(15px,4.4vw,18px); line-height:2.05;
   letter-spacing:.03em; color:#5e6b77;
 }
-.text span{transition:color .1s}
+.text span{transition:color .08s}
 .text .ok{color:var(--accent)}
 .text .bad{color:#ff6b57; background:rgba(255,107,87,.14); border-radius:3px}
 .text .cur{color:var(--accent-2); border-bottom:2px solid var(--accent-2)}
+.fx{position:absolute; inset:0; pointer-events:none; z-index:2}
+.overlay{
+  position:absolute; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  gap:10px; padding:20px; background:rgba(11,14,17,.66); border-radius:14px;
+  backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); transition:opacity .18s;
+}
+.overlay.hidden{opacity:0; pointer-events:none}
+.ov-k{font-family:var(--mono); font-size:11px; letter-spacing:.18em; color:#6f7d8a}
+.ov-big{font-family:var(--mono); font-size:clamp(34px,11vw,54px); font-weight:700; line-height:1; color:var(--accent-2); text-shadow:0 0 30px rgba(255,179,71,.45)}
+.ov-big.go{color:var(--accent); text-shadow:0 0 30px rgba(53,224,200,.55); font-size:clamp(30px,9vw,46px)}
+.ov-sub{font-size:12.5px; color:#8b98a5; line-height:1.6; text-align:center; max-width:300px}
+.ov-btn{padding:9px 20px; border-radius:10px; border:1px solid rgba(53,224,200,.5); background:rgba(53,224,200,.08); color:var(--accent); font-family:var(--mono); font-size:12px; letter-spacing:.12em; cursor:pointer}
 
 .field{
   width:min(100%,460px); margin-top:12px; display:block; padding:12px 14px;
@@ -62,30 +82,52 @@ body{
 }
 .field:focus{border-color:rgba(53,224,200,.45)}
 .field:disabled{opacity:.55}
+.field.err{border-color:rgba(255,107,87,.7); animation:errShake .26s ease-out}
+@keyframes errShake{
+  0%{transform:translate(0,0)}25%{transform:translate(-3px,0)}
+  50%{transform:translate(3px,0)}75%{transform:translate(-2px,0)}100%{transform:translate(0,0)}
+}
 
 .result{
-  width:min(100%,460px); margin-top:12px; padding:11px 14px; border:1px solid var(--line);
-  border-radius:12px; background:var(--panel); display:flex; align-items:center; justify-content:space-between; gap:12px;
+  width:min(100%,460px); margin-top:12px; padding:12px 14px; border:1px solid var(--line);
+  border-radius:12px; background:var(--panel); display:flex; flex-direction:column; gap:6px;
   font-size:13px; color:var(--dim); line-height:1.5;
 }
 .result[hidden]{display:none!important}
-.result.win{border-color:rgba(53,224,200,.45); color:var(--ink)}
+.result.win{border-color:rgba(53,224,200,.45)}
+.rankline{display:flex; align-items:baseline; gap:10px}
+.rank{font-family:var(--mono); font-size:22px; font-weight:700; letter-spacing:.06em; line-height:1}
+.rank.god{color:#ffd166; text-shadow:0 0 20px rgba(255,209,102,.55)}
+.rank.inv{color:var(--accent)}
+.rank.str{color:#9fd2ff}
+.rank.sol{color:#c6d3de}
+.rank.warm{color:#8b98a5}
+.rank.cn{font-size:11.5px; letter-spacing:.12em; color:#6f7d8a}
+.numline{font-family:var(--mono); font-size:12.5px; color:#b7c4cf}
+.numline b{color:var(--ink); font-size:15px}
+.tbl{font-family:var(--mono); font-size:11px; margin-top:2px}
+.tbl .row{display:grid; grid-template-columns:20px 1fr 76px; gap:6px; align-items:baseline; padding:2px 4px; border-radius:6px; color:#7b8894}
+.tbl .row.head{color:#556370; font-size:10px; letter-spacing:.08em}
+.tbl .row.now{background:rgba(53,224,200,.12); color:#bff7ee}
+.tbl .row i{font-style:normal; color:#556370}
+.tbl .row span:nth-child(3){text-align:right}
 .again{
-  flex:0 0 auto; padding:7px 14px; border-radius:9px; border:1px solid rgba(53,224,200,.4);
+  align-self:flex-start; padding:7px 14px; border-radius:9px; border:1px solid rgba(53,224,200,.4);
   background:transparent; color:var(--accent); font-family:var(--mono); font-size:12px; letter-spacing:.1em;
   cursor:pointer; transition:background .18s;
 }
 .again:hover{background:rgba(53,224,200,.1)}
 
 .hint{width:min(100%,460px); margin:12px 0 0; color:#5c6772; font-size:12.5px; line-height:1.7; text-align:center}
-@media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+@media (prefers-reduced-motion:reduce){ *{animation-duration:.01ms!important; transition-duration:.01ms!important} }
 </style>
 </head>
 <body>
 
 <div class="bar">
   <a class="back" href="../index.html">← 返回</a>
-  <span class="title">Typing Sprint</span>
+  <span class="title">Typing Sprint · Pro Max</span>
+  <button id="soundBtn" type="button">音效 开</button>
 </div>
 
 <div class="hud">
@@ -94,19 +136,30 @@ body{
   <div class="stat best"><span class="label">最佳</span><strong id="best">—</strong></div>
 </div>
 
-<p class="goal"><b>目标</b>照抄下面这段，一分钟内数你打对了多少字。打错就停在那，改对了才能继续往下走；时间一到立刻停手。</p>
+<p class="goal"><b>目标</b>照抄这一段，60 秒内数你打对多少字。打错停在那，改对才能往下；整段打完算清台。</p>
 
-<div class="text" id="text" aria-label="要打的内容"></div>
+<div class="stage" id="stage">
+  <div class="text" id="text" aria-label="要打的内容"></div>
+  <canvas class="fx" id="fx"></canvas>
+  <div class="overlay" id="overlay">
+    <div class="ov-k">TYPING SPRINT · 60s</div>
+    <div class="ov-big" id="ovBig">60</div>
+    <div class="ov-sub" id="ovSub">倒计时结束就开跑。中文输入法直接打，标点照原样，不许粘贴。</div>
+    <button class="ov-btn" id="startBtn" type="button">开始</button>
+  </div>
+</div>
 
 <textarea class="field" id="input" rows="2" spellcheck="false" autocomplete="off"
-          autocorrect="off" autocapitalize="off" placeholder="点进来，从这里开始照抄"></textarea>
+          autocorrect="off" autocapitalize="off" placeholder="点进来，从这里开始照抄" disabled></textarea>
 
 <div class="result" id="result" hidden>
-  <span id="resultText"></span>
+  <div class="rankline"><span class="rank" id="resRank"></span><span class="rank cn" id="resCn"></span></div>
+  <div class="numline" id="resNum"></div>
+  <div class="tbl" id="resRuns"></div>
   <button class="again" id="again" type="button">再来一次</button>
 </div>
 
-<p class="hint">中文输入法直接打，标点也照原样；不许粘贴。开始敲第一个字就计时。</p>
+<p class="hint">起跑信号是 GO，不是第一个字。打错一个字就红一下，删掉重来。</p>
 
 <script>
 (function () {
@@ -114,6 +167,9 @@ body{
 
   var DURATION = 60000;
   var BEST_KEY = 'paly.typing.best';
+  var RUNS_KEY = 'paly.typing.runs';
+  var SOUND_KEY = 'paly.typing.sound';
+  var CD_STEP = 460;
 
   var PASSAGES = [
     '网络工程这门手艺，说到底是在数据从一台机器走到另一台机器的路上做判断。知道包往哪走、为什么绕路、在哪一段丢了，比背下几十条命令更要紧。命令可以查，判断只能自己练。',
@@ -122,32 +178,193 @@ body{
     '写代码之前先把目录想清楚，哪个文件放哪、谁读谁写。想清楚了再动手，改起来才不慌；想不清楚就先写，最后一定会在某个半夜对着一个找不到的文件发呆。'
   ];
 
+  var stage = document.getElementById('stage');
   var textEl = document.getElementById('text');
+  var fx = document.getElementById('fx');
+  var ctx = fx.getContext('2d');
   var inputEl = document.getElementById('input');
   var leftEl = document.getElementById('left');
   var scoreEl = document.getElementById('score');
   var bestEl = document.getElementById('best');
+  var overlay = document.getElementById('overlay');
+  var ovBig = document.getElementById('ovBig');
+  var ovSub = document.getElementById('ovSub');
+  var startBtn = document.getElementById('startBtn');
   var resultEl = document.getElementById('result');
-  var resultTextEl = document.getElementById('resultText');
+  var resRank = document.getElementById('resRank');
+  var resCn = document.getElementById('resCn');
+  var resNum = document.getElementById('resNum');
+  var resRuns = document.getElementById('resRuns');
   var againEl = document.getElementById('again');
+  var soundBtn = document.getElementById('soundBtn');
 
   var target = '';
   var spans = [];
   var correct = 0;
+  var prevCorrect = 0;
+  var combo = 0;
   var best = 0;
-  var running = false;
-  var finished = false;
+  var state = 'ready';        // ready | countdown | running | over
   var t0 = 0;
   var tick = 0;
+  var cdTimer = 0;
   var composing = false;
   var lastIdx = -1;
+  var milestone = 0;
 
+  /* ---------- 音效 ---------- */
+  var AC = null, soundOn = true;
+  try { if (localStorage.getItem(SOUND_KEY) === '0') soundOn = false; } catch (e) {}
+  function renderSoundBtn() { soundBtn.textContent = '音效 ' + (soundOn ? '开' : '关'); }
+  renderSoundBtn();
+
+  function ac() {
+    if (!AC) {
+      var C = window.AudioContext || window.webkitAudioContext;
+      if (!C) return null;
+      AC = new C();
+    }
+    if (AC.state === 'suspended') { try { AC.resume(); } catch (e) {} }
+    return AC;
+  }
+
+  function tone(freq, dur, type, vol, delay, glideTo) {
+    if (!soundOn) return;
+    var a = ac(); if (!a) return;
+    var t0s = a.currentTime + (delay || 0);
+    var o = a.createOscillator(), g = a.createGain();
+    o.type = type || 'sine';
+    o.frequency.setValueAtTime(freq, t0s);
+    if (glideTo) { try { o.frequency.exponentialRampToValueAtTime(glideTo, t0s + dur); } catch (e) {} }
+    g.gain.setValueAtTime(0.0001, t0s);
+    g.gain.linearRampToValueAtTime(vol, t0s + Math.min(dur * 0.3, 0.015));
+    g.gain.exponentialRampToValueAtTime(0.0001, t0s + dur);
+    o.connect(g); g.connect(a.destination);
+    o.start(t0s); o.stop(t0s + dur + 0.03);
+  }
+
+  function sfxKey(n) { tone(520 + Math.min(n, 44) * 7, 0.028, 'square', 0.02); }
+  function sfxMiss() { tone(190, 0.1, 'sawtooth', 0.055, 0, 130); }
+  function sfxMark() { tone(880, 0.09, 'triangle', 0.055); tone(1150, 0.1, 'sine', 0.04, 0.05); }
+  function sfxCd(n) { tone(400 + (3 - n) * 70, 0.08, 'square', 0.05); }
+  function sfxGo() { tone(860, 0.14, 'triangle', 0.09); tone(1180, 0.16, 'triangle', 0.07, 0.07); }
+  function sfxFinish() { tone(240, 0.4, 'square', 0.06, 0, 150); }
+  function sfxClear() {
+    var notes = [523, 659, 784, 1046, 1318];
+    for (var i = 0; i < notes.length; i++) tone(notes[i], 0.24, 'triangle', 0.1, i * 0.085);
+  }
+  function sfxBest() { tone(880, 0.14, 'sine', 0.1); tone(1320, 0.18, 'sine', 0.08, 0.12); }
+
+  /* ---------- 粒子 ---------- */
+  var dpr = window.devicePixelRatio || 1;
+  var cw = 0, ch = 0, parts = [], raf = 0, lastT = 0;
+
+  function sizeFx() {
+    var r = stage.getBoundingClientRect();
+    cw = r.width; ch = r.height;
+    fx.width = Math.max(1, Math.round(cw * dpr));
+    fx.height = Math.max(1, Math.round(ch * dpr));
+    fx.style.width = cw + 'px';
+    fx.style.height = ch + 'px';
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function burst(x, y, n, col, power) {
+    for (var i = 0; i < n; i++) {
+      var a = -Math.PI / 2 + (Math.random() - 0.5) * 1.6;
+      var sp = power + Math.random() * power;
+      parts.push({
+        x: x, y: y, vx: Math.cos(a) * sp * (Math.random() < 0.5 ? -1 : 1) * 0.7,
+        vy: Math.sin(a) * sp,
+        life: 0, ttl: 0.34 + Math.random() * 0.3,
+        size: 1.2 + Math.random() * 2,
+        c: col
+      });
+    }
+    if (parts.length > 180) parts.splice(0, parts.length - 180);
+    if (!raf) { lastT = 0; raf = requestAnimationFrame(paint); }
+  }
+
+  function paintFx(ts) {
+    if (!lastT) lastT = ts;
+    var dt = Math.min(0.05, (ts - lastT) / 1000);
+    lastT = ts;
+    ctx.clearRect(0, 0, cw, ch);
+    for (var i = parts.length - 1; i >= 0; i--) {
+      var p = parts[i];
+      p.life += dt;
+      if (p.life >= p.ttl) { parts.splice(i, 1); continue; }
+      p.vy += 130 * dt;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      var k = 1 - p.life / p.ttl;
+      ctx.globalAlpha = Math.max(0, k);
+      ctx.fillStyle = p.c;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size * (0.5 + k * 0.7), 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+    if (parts.length) raf = requestAnimationFrame(paintFx);
+    else { raf = 0; ctx.clearRect(0, 0, cw, ch); }
+  }
+
+  function spanPoint(i) {
+    var s = spans[i];
+    if (!s) return null;
+    var r = s.getBoundingClientRect();
+    var host = stage.getBoundingClientRect();
+    return { x: r.left - host.left + r.width / 2, y: r.top - host.top + r.height / 2 };
+  }
+
+  /* ---------- 记录 ---------- */
   try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) { best = 0; }
 
   function renderBest() {
     bestEl.textContent = best ? best + ' 字' : '—';
   }
 
+  function readRuns() {
+    try {
+      var raw = localStorage.getItem(RUNS_KEY);
+      var arr = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(arr)) return [];
+      return arr.filter(function (x) { return x && typeof x.n === 'number'; })
+                .sort(function (a, b) { return b.n - a.n; })
+                .slice(0, 5);
+    } catch (e) { return []; }
+  }
+
+  function pushRun(run) {
+    var list = readRuns();
+    list.push(run);
+    list.sort(function (a, b) { return b.n - a.n; });
+    list = list.slice(0, 5);
+    try { localStorage.setItem(RUNS_KEY, JSON.stringify(list)); } catch (e) {}
+    return list;
+  }
+
+  function rankOf(n, complete) {
+    if (complete) return { k: 'god', n: 'GODLIKE', cn: '整段打完' };
+    if (n >= 65) return { k: 'inv', n: 'INVINCIBLE', cn: '手比嘴快' };
+    if (n >= 50) return { k: 'str', n: 'STRONG', cn: '有硬实力' };
+    if (n >= 30) return { k: 'sol', n: 'SOLID', cn: '稳得住' };
+    return { k: 'warm', n: 'WARMUP', cn: '还在找键' };
+  }
+
+  function renderRuns(list, runId) {
+    if (!list.length) { resRuns.innerHTML = ''; return; }
+    var html = '<div class="row head"><i>#</i><span>打对</span><span>评级</span></div>';
+    for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      html += '<div class="row' + (runId && r.id === runId ? ' now' : '') + '">' +
+        '<i>' + (i + 1) + '</i><span>' + r.n + ' 字</span>' +
+        '<span>' + rankOf(r.n, r.cp).n + '</span></div>';
+    }
+    resRuns.innerHTML = html;
+  }
+
+  /* ---------- 正文 ---------- */
   function pickPassage() {
     if (PASSAGES.length === 1) return PASSAGES[0];
     var idx = Math.floor(Math.random() * PASSAGES.length);
@@ -179,33 +396,101 @@ body{
       var cls = '';
       if (k < i) cls = 'ok';
       else if (k < n) cls = 'bad';
-      else if (k === i && running) cls = 'cur';
+      else if (k === i && state === 'running') cls = 'cur';
       spans[k].className = cls;
     }
     scoreEl.textContent = i + ' 字';
 
-    if (i === target.length && running) finish(true);
+    // 新打对的字：爆点 + 键声 + 每 10 字里程碑
+    if (i > prevCorrect) {
+      for (var q = prevCorrect; q < i; q++) {
+        var p = spanPoint(q);
+        if (p) burst(p.x, p.y - 4, 2, q % 3 === 0 ? '#ffd166' : '#7ff0dc', 26);
+      }
+      combo += (i - prevCorrect);
+      sfxKey(combo);
+      if (Math.floor(i / 10) > milestone) {
+        milestone = Math.floor(i / 10);
+        sfxMark();
+      }
+    } else if (i < prevCorrect) {
+      combo = 0;
+      milestone = Math.floor(i / 10);
+    }
+
+    // 打错：红闪 + 低音 + 抖
+    if (n > i && n > prevCorrect) {
+      sfxMiss();
+      inputEl.classList.remove('err');
+      void inputEl.offsetWidth;
+      inputEl.classList.add('err');
+      setTimeout(function () { inputEl.classList.remove('err'); }, 280);
+    }
+
+    prevCorrect = i;
+
+    if (i === target.length && state === 'running') finish(true);
   }
 
-  function startClock() {
-    running = true;
+  /* ---------- 流程 ---------- */
+  function startCountdown() {
+    if (state === 'running') return;
+    state = 'countdown';
+    overlay.className = 'overlay';
+    startBtn.style.display = 'none';
+    ovSub.textContent = '准备好了就动手指，GO 之前打的不算。';
+    renderCd(3);
+    sfxCd(3);
+    var step = 3;
+    cdTimer = setInterval(function () {
+      step--;
+      if (step > 0) {
+        renderCd(step);
+        sfxCd(step);
+      } else if (step === 0) {
+        renderCd(0);
+        sfxGo();
+      } else {
+        clearInterval(cdTimer);
+        cdTimer = 0;
+        beginPlay();
+      }
+    }, CD_STEP);
+  }
+
+  function renderCd(n) {
+    ovBig.className = 'ov-big';
+    if (n > 0) ovBig.textContent = String(n);
+    else { ovBig.textContent = 'GO'; ovBig.className = 'ov-big go'; }
+  }
+
+  function beginPlay() {
+    state = 'running';
+    overlay.className = 'overlay hidden';
+    inputEl.disabled = false;
+    inputEl.focus();
     t0 = performance.now();
+    leftEl.textContent = '60.0s';
+    clearInterval(tick);
     tick = setInterval(function () {
       var remain = DURATION - (performance.now() - t0);
-      if (remain <= 0) { finish(); return; }
+      if (remain <= 0) { finish(false); return; }
       leftEl.textContent = (remain / 1000).toFixed(1) + 's';
     }, 100);
+    paint();
   }
 
   function finish(complete) {
-    if (finished) return;
-    finished = true;
-    running = false;
+    if (state === 'over') return;
+    state = 'over';
     clearInterval(tick);
+    clearInterval(cdTimer);
+    cdTimer = 0;
     leftEl.textContent = '0.0s';
     inputEl.disabled = true;
 
     var ms = Math.max(1, Math.round(performance.now() - t0));
+    var cpm = Math.round(correct / (ms / 60000));
     var isBest = !best || correct > best;
     if (isBest && correct > 0) {
       best = correct;
@@ -214,39 +499,71 @@ body{
     }
     paint();
 
+    var run = {
+      n: correct, cp: complete ? 1 : 0, ms: ms, at: Date.now(),
+      id: Date.now() + '-' + Math.random().toString(36).slice(2, 8)
+    };
+    var list = pushRun(run);
+    var rk = rankOf(correct, complete);
+
+    if (complete) { sfxClear(); } else { sfxFinish(); }
+    if (isBest && correct > 0) setTimeout(sfxBest, 260);
+
+    for (var q = 0; q < Math.min(correct, 90); q += 2) {
+      (function (idx) {
+        setTimeout(function () {
+          var p = spanPoint(idx);
+          if (p) burst(p.x, p.y - 3, 2, complete ? '#ffd166' : '#7ff0dc', 22);
+        }, Math.random() * 500);
+      })(q);
+    }
+
     resultEl.hidden = false;
     resultEl.className = 'result win';
-    var head = complete
-      ? '整段打完 · ' + correct + ' 字 · ' + (ms / 1000).toFixed(1) + 's'
-      : '一分钟到，打对 ' + correct + ' 字';
-    resultTextEl.textContent = head + (isBest && correct > 0 ? ' · 新纪录' : '');
+    resRank.className = 'rank ' + rk.k;
+    resRank.textContent = rk.n;
+    resCn.textContent = rk.cn;
+    resNum.innerHTML = '打对 <b>' + correct + '</b> 字 · ' + cpm + ' 字/分 · 用时 <b>' +
+      (ms / 1000).toFixed(1) + 's</b>' + (isBest && correct > 0 ? ' · 新纪录' : '');
+    renderRuns(list, run.id);
   }
 
   function restart() {
     clearInterval(tick);
-    running = false;
-    finished = false;
+    clearInterval(cdTimer);
+    cdTimer = 0;
+    state = 'ready';
     composing = false;
     correct = 0;
-    inputEl.disabled = false;
+    prevCorrect = 0;
+    combo = 0;
+    milestone = 0;
+    parts = [];
+    if (raf) { cancelAnimationFrame(raf); raf = 0; }
+    ctx.clearRect(0, 0, cw, ch);
+    inputEl.disabled = true;
     inputEl.value = '';
     leftEl.textContent = '60.0s';
     scoreEl.textContent = '0 字';
     resultEl.hidden = true;
+    overlay.className = 'overlay';
+    startBtn.style.display = '';
+    ovBig.className = 'ov-big';
+    ovBig.textContent = '60';
+    ovSub.textContent = '倒计时结束就开跑。中文输入法直接打，标点照原样，不许粘贴。';
     buildText();
     paint();
-    inputEl.focus();
+    sizeFx();
   }
 
   inputEl.addEventListener('compositionstart', function () { composing = true; });
   inputEl.addEventListener('compositionend', function () {
     composing = false;
-    if (!finished) paint();
+    if (state === 'running') paint();
   });
 
   inputEl.addEventListener('input', function () {
-    if (finished) return;
-    if (!running) startClock();
+    if (state !== 'running') return;
     if (composing) return;      // 选词过程中不判，避免拼音字母闪红
     if (inputEl.value.length > target.length) {
       inputEl.value = inputEl.value.slice(0, target.length);
@@ -254,15 +571,37 @@ body{
     paint();
   });
 
-  inputEl.addEventListener('paste', function (e) {
-    e.preventDefault();
+  inputEl.addEventListener('paste', function (e) { e.preventDefault(); });
+
+  startBtn.addEventListener('click', function () {
+    if (state === 'ready') startCountdown();
+  });
+  overlay.addEventListener('click', function (e) {
+    if (e.target === startBtn) return;
+    if (state === 'ready') startCountdown();
+  });
+  againEl.addEventListener('click', function () { restart(); });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && state === 'ready') {
+      // 焦点不在 textarea 时可当开始键
+      if (document.activeElement !== inputEl) { e.preventDefault(); startCountdown(); }
+    }
   });
 
-  againEl.addEventListener('click', function () { restart(); });
+  soundBtn.addEventListener('click', function () {
+    soundOn = !soundOn;
+    renderSoundBtn();
+    try { localStorage.setItem(SOUND_KEY, soundOn ? '1' : '0'); } catch (e) {}
+    if (soundOn) tone(720, 0.1, 'triangle', 0.06);
+  });
+
+  window.addEventListener('resize', sizeFx);
 
   renderBest();
   buildText();
   paint();
+  sizeFx();
 })();
 </script>
 </body>
