@@ -72,7 +72,7 @@
     var bar = document.createElement('div');
     bar.className = 'paly-commit-bar';
     bar.setAttribute('role', 'note');
-    bar.textContent = '你' + when + '说过，下一局要打「' + c.label + '」。账还挂着 —— ' + NAME + '就在下面。';
+    bar.textContent = '你' + when + '定过：下次进这个区，先打「' + c.label + '」。现在就是那个"下次"。';
     document.body.insertBefore(bar, document.body.firstChild);
   }
 
@@ -106,19 +106,30 @@
       lines.push('你已经在最高档（' + RANKS[0] + '）。这一局的事只剩一件：守住它。');
     }
 
-    // ZPD：下一局一个刚好够得着的数
-    var goalText = '';
+    // 纵向对比：只跟自己的上一局比（能力感的直接来源，不比别人）
+    var prev = runs[1];
+    if (prev && prev.at && cfg.get(prev) !== undefined && cfg.get(prev) !== null) {
+      var pv = cfg.get(prev);
+      var dv = cfg.dir === 1 ? (v - pv) : (pv - v);
+      if (dv > 0) lines.push('比上一局好：' + fmt(Math.abs(dv)) + '。（上一局 ' + fmt(pv) + '）');
+      else if (dv === 0) lines.push('和上一局打平（' + fmt(pv) + '）。平局不算进步，但也没退。');
+      else lines.push('比上一局退了一点：' + fmt(Math.abs(dv)) + '。（上一局 ' + fmt(pv) + '）');
+    }
+
+    // ZPD：下一局一个刚好够得着的数，写成 if-then（"下次进这个区，我先打 X"）
+    var goalVal = null, goalText = '';
     if (idx > 0) {
       var g = gapTo(v, idx);
       var step = cfg.dir === 1 ? Math.max(1, Math.ceil(g / 2)) : Math.max(1, Math.floor(g / 2));
-      var target = cfg.dir === 1 ? v + step : v - step;
-      goalText = '下一局就打这个：' + fmt(target) + '（这局 ' + fmt(v) + '）。';
+      goalVal = cfg.dir === 1 ? v + step : v - step;
+      goalText = '下次进这个区，我先打 ' + fmt(goalVal) + '（这局 ' + fmt(v) + '）。';
     } else {
-      goalText = '下一局：先不掉档 —— 再打一次 ' + fmt(v) + ' 或更好。';
+      goalVal = v;
+      goalText = '下次进这个区，我先打 ' + fmt(v) + ' 或更好——先守住这一档。';
     }
     lines.push('<b>' + goalText + '</b>');
 
-    // 连续与断裂
+    // 连续、断裂、以及"允许补一次"（给缓冲反而留得住，见 RESEARCH 第二节第 4 条）
     var todayN = 0, daySet = {};
     for (var i = 0; i < runs.length; i++) {
       if (!runs[i] || !runs[i].at) continue;
@@ -131,11 +142,35 @@
       if (daySet[daysBack(d)]) streak++;
       else break;
     }
-    if (todayN > 1) {
-      lines.push('今天是这个区的第 <span class="hl">' + todayN + '</span> 局' +
-        (streak > 1 ? '，连着第 ' + streak + ' 天。' : '；昨天断了，连着的那条线今天从零重算。'));
-    } else if (streak > 1) {
-      lines.push('连着第 <span class="hl">' + streak + '</span> 天来这个区。');
+    function countFrom(start) {
+      var n = 0;
+      for (var i = start; i < 400; i++) {
+        if (daySet[daysBack(i)]) n++;
+        else break;
+      }
+      return n;
+    }
+    var graceKey = 'paly.' + key + '.grace';
+    var graceRaw = '';
+    try { graceRaw = localStorage.getItem(graceKey) || ''; } catch (e) {}
+    var graceUsedNow = false;
+    var gapYesterday = !daySet[daysBack(1)] && !!daySet[daysBack(2)];
+
+    if (streak > 1) {
+      lines.push('连着第 <span class="hl">' + streak + '</span> 天来这个区' +
+        (todayN > 1 ? '，今天第 ' + todayN + ' 局。' : '。'));
+    } else if (gapYesterday) {
+      var graceOld = parseInt(graceRaw, 10);
+      if (!graceOld || (Date.now() - graceOld) > 6 * 86400000) {
+        try { localStorage.setItem(graceKey, String(Date.now())); } catch (e) {}
+        graceUsedNow = true;
+        lines.push('昨天断了。这一次替你补上——连着第 <span class="hl">' +
+          (countFrom(2) + 2) + '</span> 天。这周只有这一次补，下次再断就真断了。');
+      } else {
+        lines.push('昨天断了，这周的补已经用掉，今天从第 1 天重算。');
+      }
+    } else if (todayN > 1) {
+      lines.push('今天是这个区的第 <span class="hl">' + todayN + '</span> 局。');
     } else {
       lines.push('这是今天的第 1 局。今天再来一次，这个区就算"连着"了。');
     }
@@ -143,17 +178,14 @@
     box.innerHTML =
       '<div class="paly-hook-k">这一局之后</div>' +
       '<div class="paly-hook-l">' + lines.join('<br>') + '</div>' +
-      '<button type="button" class="paly-hook-btn">下局就打这个</button>' +
-      '<div class="paly-hook-note">点它会存下这个目标；下次进这个区，第一眼会看到这笔账。</div>';
+      '<button type="button" class="paly-hook-btn">就这么定</button>' +
+      '<div class="paly-hook-note">按下它，存下这句话；下次进这个区，第一眼先看到"我先打…"。</div>';
 
     var btn = box.querySelector('.paly-hook-btn');
     btn.addEventListener('click', function () {
       try {
         localStorage.setItem(COMMIT_KEY, JSON.stringify({
-          label: (idx > 0
-            ? fmt(cfg.dir === 1 ? v + Math.max(1, Math.ceil(gapTo(v, idx) / 2))
-                                : v - Math.max(1, Math.floor(gapTo(v, idx) / 2)))
-            : fmt(v)),
+          label: fmt(goalVal),
           ts: Date.now()
         }));
       } catch (e) {}
