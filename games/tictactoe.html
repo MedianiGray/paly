@@ -147,7 +147,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   <div class="stat"><span class="label">手数</span><strong id="moves">0</strong></div>
 </div>
 
-<p class="goal"><b>目标</b>先连成三个。机器也在抢，先连成就赢；九格填满无人连成算平。它有两个固定的毛病：开局总想占最上面一排，而且每局必漏看你一次——第一次你造出威胁时它不堵。口子一定有，抓不抓得住看你。</p>
+<p class="goal"><b>目标</b>先连成三个。机器也在抢，先连成就赢；九格填满无人连成算平。它除了每局故意漏你一次（第一次你造出威胁时它不堵），其余每一步都真的算到底——不送子，也不会漏第二次。口子只有那一个，抓不抓得住看你。</p>
 
 <div class="status" id="status">你先手，点一格落子。</div>
 
@@ -201,7 +201,6 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   var myMoves = 0;
   var t0 = 0;
   var thinkTimer = null;
-  var PREF = [0, 1, 2];   // 它的偏好：最上面一排
   var slack = 0;          // 这一局它还剩几次"看漏"
 
   /* ---------- 音效 ---------- */
@@ -419,11 +418,29 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     return true;
   }
 
+  // 全解搜索：把这一格走下去，最后最好能到什么结果。
+  // +1 = 机器赢，0 = 和，-1 = 你赢。井字棋搜得完，所以它不需要背谱。
+  function scoreOf(g, turn) {
+    var w = winnerOf(g);
+    if (w) return w.who === 'O' ? 1 : -1;
+    if (isFull(g)) return 0;
+    var best = turn === 'O' ? -2 : 2, i, s;
+    for (i = 0; i < 9; i++) {
+      if (g[i]) continue;
+      g[i] = turn;
+      s = scoreOf(g, turn === 'O' ? 'X' : 'O');
+      g[i] = '';
+      if (turn === 'O') { if (s > best) best = s; }
+      else { if (s < best) best = s; }
+    }
+    return best;
+  }
+
   // 机器：一个有脾气的人，不是完美防守机器。
   // ① 自己能连成三个 → 立刻连（它不会放过杀你的机会）
   // ② 你只差一格就赢 → 它通常会堵，但这一局它有 slack 次会看漏（人会漏）
-  // ③ 没有威胁时，它偏爱最上面一排 —— 这是你能读出来的固定路子
-  // ④ 否则中心、角、边
+  // ③ 其余每一步都用全解搜索挑最优；最优有多个时随机取一个
+  //    —— 所以每局下法不一样，背不下来，也没法靠"它总占最上面"骗它
   function machineMove() {
     var i;
     for (i = 0; i < 9; i++) {
@@ -446,17 +463,21 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
         return blockAt;
       }
     }
-    for (i = 0; i < PREF.length; i++) {
-      if (!grid[PREF[i]]) return PREF[i];
+
+    var cand = [], s;
+    for (i = 0; i < 9; i++) {
+      if (grid[i]) continue;
+      grid[i] = 'O';
+      s = scoreOf(grid, 'X');
+      grid[i] = '';
+      cand.push({ i: i, s: s });
     }
-    if (!grid[4]) return 4;
-    var corners = [], cs = [0, 2, 6, 8];
-    for (i = 0; i < cs.length; i++) if (!grid[cs[i]]) corners.push(cs[i]);
-    if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
-    var edges = [], es = [1, 3, 5, 7];
-    for (i = 0; i < es.length; i++) if (!grid[es[i]]) edges.push(es[i]);
-    if (edges.length) return edges[Math.floor(Math.random() * edges.length)];
-    return -1;
+    if (!cand.length) return -1;
+    var top = -2;
+    for (i = 0; i < cand.length; i++) if (cand[i].s > top) top = cand[i].s;
+    var bests = [];
+    for (i = 0; i < cand.length; i++) if (cand[i].s === top) bests.push(cand[i].i);
+    return bests[Math.floor(Math.random() * bests.length)];
   }
 
   function markWin(line, who) {
@@ -632,6 +653,13 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   renderHead();
   buildBoard();
   startNew();
+
+  // 只读验收探针：只在 ?dbg=1 时存在，不影响对局、不上报任何数
+  if (/[?&]dbg=1/.test(location.search)) {
+    window.__probe = function () {
+      return { grid: grid.slice(), slack: slack, over: !!resultEl && !resultEl.hidden, moves: myMoves };
+    };
+  }
 })();
 </script>
 <script src="../assets/pulse.js?v=20261128f" defer></script>
