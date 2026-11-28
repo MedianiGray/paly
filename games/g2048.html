@@ -187,6 +187,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   var stage = document.getElementById('stage');
   var board = document.getElementById('board');
+  var animUntil = {};   // "r,c" -> 该格动画到期时间，防止连打时把正在播的动效掐断
   var fx = document.getElementById('fx');
   var ctx = fx.getContext('2d');
   var scoreEl = document.getElementById('score');
@@ -254,6 +255,11 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   function sfxScan(i) { tone(380 + i * 16, 0.05, 'square', 0.035); }
   function sfxSlide() { tone(150, 0.07, 'sine', 0.05, 0, 108); }
   function sfxSpawn() { tone(680, 0.06, 'triangle', 0.05); }
+  // 撞住了：低频短闷响，没有音高变化，听起来就是"被挡住"
+  function sfxBump() {
+    tone(96, 0.1, 'square', 0.055, 0, 74);
+    tone(62, 0.14, 'sine', 0.04, 0.02);
+  }
   function sfxMerge(v, k) {
     var lv = Math.log2(v);
     var f = Math.min(300 + lv * 52, 900);
@@ -375,6 +381,17 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     board.classList.add('shake');
   }
 
+  // 撞住了：朝你按的方向抖一下 + 一声闷响。
+  // 以前这里是静默 return —— 按了什么都不发生，人会以为卡了，然后连按三下。
+  function bumpWall(dir) {
+    var sign = (dir === 'left') ? -1 : (dir === 'right' ? 1 : 1);
+    board.style.setProperty('--amp', (sign * 3.4) + 'px');
+    board.classList.remove('shake');
+    void board.offsetWidth;
+    board.classList.add('shake');
+    sfxBump();
+  }
+
   /* ---------- 存档 ---------- */
   function readRuns() {
     try {
@@ -465,14 +482,23 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       el.dataset.v = v === 0 ? '0' : (v > 2048 ? 'big' : String(v));
       el.dataset.len = v === 0 ? '0' : String(v).length;
       el.textContent = v === 0 ? '' : String(v);
-      el.classList.remove('pop');
-      el.classList.remove('bump');
+      // 旧版这里无条件 remove 两个动画类：连打时上一步刚冒出来的新块、
+      // 刚合并跳动的块，动画播到一半就被下一帧掐断，看起来像"闪一下就死"。
+      // 现在给每格的动画记一个到期时间，没播完就不动它。
+      var key = r + ',' + c;
+      var fresh = !!(popAt && popAt.r === r && popAt.c === c && v);
+      var keepPop = !fresh && el.classList.contains('pop') && Date.now() < (animUntil[key] || 0);
+      var keepBump = !fresh && el.classList.contains('bump') && Date.now() < (animUntil[key] || 0);
+      if (!keepPop) el.classList.remove('pop');
+      if (!keepBump) el.classList.remove('bump');
 
-      if (popAt && popAt.r === r && popAt.c === c && v) {
+      if (fresh) {
         void el.offsetWidth;
         el.classList.add('pop');
+        animUntil[key] = Date.now() + 300;
       } else if (prev && v && v !== before) {
         el.classList.add('bump');
+        animUntil[key] = Date.now() + 300;
       }
     }
   }
@@ -537,7 +563,12 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       }
     }
 
-    if (sameGrid(before, grid)) return;
+    // 挪不动：屏幕抖一下 + 一声闷响。
+    // 以前这里是静默 return，按了没反应，人会以为卡住，然后连按三下。
+    if (sameGrid(before, grid)) {
+      bumpWall(dir);
+      return;
+    }
 
     moves++;
     if (gainedAll) { score += gainedAll; updateScore(); }
@@ -723,9 +754,18 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     A: 'left', D: 'right', W: 'up', S: 'down'
   };
 
+  // 按住不放时，操作系统会以约 30 次/秒重复发键。
+  // 不限流的话一步接一步，新块一秒生十几个，棋盘瞬间被灌满——那不是快，是失控。
+  var lastMoveAt = 0;
+
   document.addEventListener('keydown', function (e) {
     var dir = KEYMAP[e.key];
-    if (dir) { e.preventDefault(); move(dir); }
+    if (dir) {
+      e.preventDefault();
+      if (e.repeat && Date.now() - lastMoveAt < 95) return;
+      lastMoveAt = Date.now();
+      move(dir);
+    }
     if (e.key === 'r' || e.key === 'R') startNew();
   });
 
@@ -774,6 +814,13 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   window.addEventListener('resize', function () { sizeFx(); });
 
   startNew();
+
+  // 只读验收探针：只在 ?dbg=1 时存在，不影响对局、不上报任何数
+  if (/[?&]dbg=1/.test(location.search)) {
+    window.__probe = function () {
+      return { grid: grid.map(function (row) { return row.slice(); }), score: score, moves: moves, max: maxTile(), state: state };
+    };
+  }
 })();
 </script>
 <script src="../assets/pulse.js?v=20261128f" defer></script>
