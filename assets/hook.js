@@ -10,6 +10,14 @@
   var key = (location.pathname.match(/\/games\/([a-z0-9]+)\.html/i) || [])[1];
   if (!key) return;
 
+  // 对照组：arm=plain 时不挂任何钩子，结束屏只有评级和读数。
+  // 这样"钩子到底有没有用"不是我说了算，是两组数字自己比出来的。
+  var isControl = /[?&]arm=plain/.test(location.search);
+  if (!isControl) {
+    try { isControl = localStorage.getItem('paly.arm') === 'plain'; } catch (e) {}
+  }
+  if (isControl) return;
+
   var RANKS = ['GODLIKE', 'INVINCIBLE', 'STRONG', 'SOLID', 'WARMUP'];
   // dir: 1 = 越大越好；-1 = 越小越好。tiers 从最高档往下排。
   var CFG = {
