@@ -147,7 +147,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   <div class="stat"><span class="label">手数</span><strong id="moves">0</strong></div>
 </div>
 
-<p class="goal"><b>目标</b>先连成三个。机器也在抢，先连成就赢；九格填满无人连成算平。它有个毛病：开局总想占最上面一排，偶尔还会看漏一步——那两处就是你的机会。</p>
+<p class="goal"><b>目标</b>先连成三个。机器也在抢，先连成就赢；九格填满无人连成算平。它有两个固定的毛病：开局总想占最上面一排，而且每局必漏看你一次——第一次你造出威胁时它不堵。口子一定有，抓不抓得住看你。</p>
 
 <div class="status" id="status">你先手，点一格落子。</div>
 
@@ -440,8 +440,8 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       grid[i] = '';
     }
     if (blockAt >= 0) {
-      if (slack > 0 && Math.random() < 0.5) {
-        slack -= 1;            // 这一次它没看见
+      if (slack > 0) {
+        slack -= 1;            // 这一局它一定会漏一次，不多不少
       } else {
         return blockAt;
       }
@@ -583,7 +583,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     busy = true;
     myMoves = 0;
     parts = [];
-    slack = (Math.random() < 0.55) ? 1 : 0;   // 这一局它会不会看漏
+    slack = 1;   // 每局它必漏一次，口子一定有，抓不抓得住看人
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     ctx.clearRect(0, 0, cw, ch);
     movesEl.textContent = '0';
