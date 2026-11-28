@@ -61,6 +61,14 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 .text .ok{color:var(--accent)}
 .text .bad{color:#ff6b57; background:rgba(255,107,87,.14); border-radius:3px}
 .text .cur{color:var(--accent-2); border-bottom:2px solid var(--accent-2)}
+.text .mar{position:relative}
+.text .mar::before,.text .mar::after{
+  content:''; position:absolute; left:-2px; right:-2px; top:50%; height:1px;
+  background:rgba(255,107,87,.78); pointer-events:none;
+}
+.text .mar::before{transform:translateY(-50%) rotate(16deg)}
+.text .mar::after{transform:translateY(-50%) rotate(-16deg)}
+.text .mar.ok::before,.text .mar.ok::after{background:rgba(255,107,87,.55)}
 .fx{position:absolute; inset:0; pointer-events:none; z-index:2}
 .overlay{
   position:absolute; inset:0; z-index:3; display:flex; flex-direction:column; align-items:center; justify-content:center;
@@ -133,10 +141,11 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 <div class="hud">
   <div class="stat time"><span class="label">剩余</span><strong id="left">60.0s</strong></div>
   <div class="stat"><span class="label">打对</span><strong id="score">0 字</strong></div>
+  <div class="stat"><span class="label">疤</span><strong id="scar">0</strong></div>
   <div class="stat best"><span class="label">最佳</span><strong id="best">—</strong></div>
 </div>
 
-<p class="goal"><b>目标</b>照抄这一段，60 秒内数你打对多少字。打错停在那，改对才能往下；整段打完算清台。</p>
+<p class="goal"><b>目标</b>照抄这一段，60 秒内数你打对多少字。打错停在那，改对才能往下；整段打完算清台。<b>打错的那个字会被划一道叉，改对了叉也不消失</b>——这一遍你划了几个，打完一眼能数。</p>
 
 <div class="stage" id="stage">
   <div class="text" id="text" aria-label="要打的内容"></div>
@@ -159,7 +168,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   <button class="again" id="again" type="button">再来一次</button>
 </div>
 
-<p class="hint">起跑信号是 GO，不是第一个字。打错一个字就红一下，删掉重来。</p>
+<p class="hint">起跑信号是 GO，不是第一个字。打错一个字会被划一道叉，改对了叉也留着——打完数疤。</p>
 
 <script>
 (function () {
@@ -185,6 +194,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   var inputEl = document.getElementById('input');
   var leftEl = document.getElementById('left');
   var scoreEl = document.getElementById('score');
+  var scarEl = document.getElementById('scar');
   var bestEl = document.getElementById('best');
   var overlay = document.getElementById('overlay');
   var ovBig = document.getElementById('ovBig');
@@ -203,6 +213,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   var correct = 0;
   var prevCorrect = 0;
   var combo = 0;
+  var marks = {};
   var best = 0;
   var state = 'ready';        // ready | countdown | running | over
   var t0 = 0;
@@ -254,6 +265,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     for (var i = 0; i < notes.length; i++) tone(notes[i], 0.24, 'triangle', 0.1, i * 0.085);
   }
   function sfxBest() { tone(880, 0.14, 'sine', 0.1); tone(1320, 0.18, 'sine', 0.08, 0.12); }
+  function sfxScar() { tone(150, 0.16, 'square', 0.05, 0, 110); tone(96, 0.22, 'sawtooth', 0.035, 0.04, 80); }
 
   /* ---------- 粒子 ---------- */
   var dpr = window.devicePixelRatio || 1;
@@ -376,6 +388,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   function buildText() {
     textEl.innerHTML = '';
     spans = [];
+    marks = {};
     target = pickPassage();
     for (var i = 0; i < target.length; i++) {
       var s = document.createElement('span');
@@ -383,6 +396,12 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       textEl.appendChild(s);
       spans.push(s);
     }
+  }
+
+  function countMarks() {
+    var c = 0;
+    for (var k in marks) { if (marks.hasOwnProperty(k)) c++; }
+    return c;
   }
 
   function paint() {
@@ -397,6 +416,8 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       if (k < i) cls = 'ok';
       else if (k < n) cls = 'bad';
       else if (k === i && state === 'running') cls = 'cur';
+      // 错过的字永久留一道叉：改对了也不抹掉，这一遍划了几个打完一数就知道
+      if (marks[k]) cls = (cls ? cls + ' ' : '') + 'mar';
       spans[k].className = cls;
     }
     scoreEl.textContent = i + ' 字';
@@ -418,9 +439,15 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       milestone = Math.floor(i / 10);
     }
 
-    // 打错：红闪 + 低音 + 抖
+    // 打错：红闪 + 低音 + 抖 + 在这个字上留一道叉
     if (n > i && n > prevCorrect) {
       sfxMiss();
+      if (i < target.length && !marks[i]) {
+        marks[i] = 1;
+        scarEl.textContent = countMarks();
+        sfxScar();
+        spans[i].className = (spans[i].className ? spans[i].className + ' ' : '') + 'mar';
+      }
       inputEl.classList.remove('err');
       void inputEl.offsetWidth;
       inputEl.classList.add('err');
@@ -524,7 +551,8 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     resRank.textContent = rk.n;
     resCn.textContent = rk.cn;
     resNum.innerHTML = '打对 <b>' + correct + '</b> 字 · ' + cpm + ' 字/分 · 用时 <b>' +
-      (ms / 1000).toFixed(1) + 's</b>' + (isBest && correct > 0 ? ' · 新纪录' : '');
+      (ms / 1000).toFixed(1) + 's</b> · 留疤 <b>' + countMarks() + '</b> 处' +
+      (isBest && correct > 0 ? ' · 新纪录' : '');
     renderRuns(list, run.id);
   }
 
@@ -538,6 +566,8 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     prevCorrect = 0;
     combo = 0;
     milestone = 0;
+    marks = {};
+    scarEl.textContent = '0';
     parts = [];
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     ctx.clearRect(0, 0, cw, ch);
