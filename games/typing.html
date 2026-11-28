@@ -553,20 +553,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     resNum.innerHTML = '打对 <b>' + correct + '</b> 字 · ' + cpm + ' 字/分 · 用时 <b>' +
       (ms / 1000).toFixed(1) + 's</b> · 留疤 <b>' + countMarks() + '</b> 处' +
       (isBest && correct > 0 ? ' · 新纪录' : '');
-    // 下次目标：给一个具体数字，别只给一堆读数
-    var oldGoal = document.getElementById('typing-goal');
-    if (oldGoal) oldGoal.parentNode.removeChild(oldGoal);
-    (function () {
-      var g = document.createElement('div');
-      g.id = 'typing-goal';
-      g.style.cssText = 'margin-top:8px;font:600 12px/1.6 var(--mono,monospace);color:#35e0c8';
-      g.textContent = (isBest && correct > 0)
-        ? '新纪录立住了——下一局守它。'
-        : (best > 0
-          ? (correct >= best ? '字数追平最好——再来一局破它。' : '距你的最好（' + best + ' 字）还差 ' + (best - correct) + ' 字。')
-          : '前五还空着，再来一局就能占一个位。');
-      resNum.parentNode.insertBefore(g, resNum.nextSibling);
-    })();
+    // 下一局的具体目标由 assets/hook.js 统一挂在结束屏上
     renderRuns(list, run.id);
   }
 
@@ -649,5 +636,6 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 })();
 </script>
 <script src="../assets/pulse.js" defer></script>
+<script src="../assets/hook.js" defer></script>
 </body>
 </html>
