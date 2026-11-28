@@ -220,10 +220,13 @@
       ta.parentNode.removeChild(ta);
       btn.textContent = done ? '已复制 · 粘贴发送就行' : '复制失败：手选下面的链接';
       if (!done) {
-        var box = document.createElement('p');
+        var box = document.createElement('textarea');
         box.className = 'share-fallback';
-        box.textContent = 'https://medianigray.github.io/paly/';
+        box.readOnly = true;
+        box.rows = 3;
+        box.value = txt;
         btn.parentNode.insertBefore(box, btn.nextSibling);
+        try { box.focus(); box.select(); } catch (e) {}
       }
     }
     btn.addEventListener('click', function () {
