@@ -102,7 +102,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   <div class="stat best"><span class="label">最久</span><strong id="best">—</strong></div>
 </div>
 
-<p class="goal"><b>目标</b>左右移动躲开落块。被砸中就结束，活得越久评级越高。</p>
+<p class="goal"><b>目标</b>左右移动躲开落块。被砸中就结束，活得越久评级越高。开局就有块在半空往下掉——站着不动，多半撑不过十秒。</p>
 
 <div class="stage">
   <canvas id="cv" aria-label="躲避游戏区域"></canvas>
@@ -257,11 +257,23 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   /* ---------- 难度曲线 ---------- */
   function speedAt(ms) {
-    return 0.05 + Math.min(0.15, (ms / 30000) * 0.15);     // 50 -> 200 px/s
+    return 0.09 + Math.min(0.13, (ms / 30000) * 0.13);     // 90 -> 220 px/s
   }
 
   function gapAt(ms) {
-    return 900 - Math.min(460, (ms / 30000) * 460);        // 900 -> 440 ms
+    return 820 - Math.min(360, (ms / 30000) * 360);        // 820 -> 460 ms
+  }
+
+  // 开局先把两块丢在半屏高度：以前全部从屏外顶部出生、初速 50px/s，
+  // 玩家要等十来秒才遇到第一块，前半分钟毫无压力，还以为这游戏就这样。
+  function seedRain() {
+    var w1 = 30 + Math.random() * 34;
+    blocks.push({ x: Math.random() * (W - w1), y: 96, w: w1, h: 22, vy: speedAt(0), passed: false });
+    var w2 = 30 + Math.random() * 34;
+    var x2 = Math.random() * (W - w2);
+    if (Math.abs(x2 + w2 / 2 - player.x) < 70) x2 = (x2 + 150) % (W - w2);
+    blocks.push({ x: x2, y: 214, w: w2, h: 22, vy: speedAt(0), passed: false });
+    lastX = x2;
   }
 
   function spawn() {
@@ -283,6 +295,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     shake = 0;
     lastX = W / 2;
     player.x = W / 2;
+    seedRain();
     surviveEl.textContent = '0.0s';
     markEl.textContent = '0';
     clearTimeout(dieTimer);
@@ -575,6 +588,17 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   renderRuns(readRuns(), null);
   ovTip.textContent = '点一下开始';
   draw();
+
+  // 只读验收探针：只在 ?dbg=1 时存在
+  if (/[?&]dbg=1/.test(location.search)) {
+    window.__probe = function () {
+      return {
+        state: state, elapsed: Math.round(elapsed), blocks: blocks.length,
+        near: blocks.filter(function (b) { return b.y > 300; }).length,
+        px: Math.round(player.x), vis: document.visibilityState
+      };
+    };
+  }
 })();
 </script>
 <script src="../assets/pulse.js?v=20261128f" defer></script>
