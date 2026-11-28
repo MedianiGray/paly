@@ -56,7 +56,9 @@
       document.querySelectorAll('.card').forEach(function (c) {
         var h = c.getAttribute('href');
         if (h && h.indexOf('arm=') < 0) {
-          c.setAttribute('href', h + (h.indexOf('?') > -1 ? '&' : '?') + 'arm=' + a);
+          // 带上 build 标记：浏览器缓存住旧 HTML 时，点进去看到的会是改之前的那一版
+          var sep = h.indexOf('?') > -1 ? '&' : '?';
+          c.setAttribute('href', h + sep + 'arm=' + a + '&v=20261128g');
         }
       });
     } catch (e) {}
