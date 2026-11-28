@@ -148,7 +148,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   </div>
 </div>
 
-<p class="goal"><b>目标</b>八对牌全部配对。翻开两张算一步，步数越少越强；清台给评级。</p>
+<p class="goal"><b>目标</b>八对牌全部配对。翻开两张算一步，步数越少越强；清台给评级。连对会在两张牌之间拉起一条线，连得越久线越亮——断了就从头再连。</p>
 
 <div class="stage" id="stage">
   <div class="deck" id="deck" aria-label="记忆翻牌棋盘"></div>
@@ -249,10 +249,16 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     for (var i = 0; i < notes.length; i++) tone(notes[i], 0.28, 'triangle', 0.11, i * 0.1);
   }
   function sfxBest() { tone(880, 0.14, 'sine', 0.1); tone(1320, 0.18, 'sine', 0.08, 0.12); }
+  function sfxCombo(n) {
+    var base = 520 + Math.min(n, 6) * 60;
+    tone(base, 0.12, 'triangle', 0.09);
+    tone(base * 1.5, 0.16, 'sine', 0.065, 0.06);
+    tone(base * 2, 0.18, 'sine', 0.045, 0.12);
+  }
 
   /* ---------- 粒子层 ---------- */
   var dpr = window.devicePixelRatio || 1;
-  var cw = 0, ch = 0, parts = [], raf = 0, lastT = 0;
+  var cw = 0, ch = 0, parts = [], lines = [], combo = 0, raf = 0, lastT = 0;
 
   function sizeFx() {
     var r = stage.getBoundingClientRect();
@@ -283,11 +289,48 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     if (!raf) { lastT = 0; raf = requestAnimationFrame(tick); }
   }
 
+  // 配对成功：在两张牌之间拉一条会褪去的线，沿线撒一层粒子。
+  // 这是这一项"一眼能看见"的东西 —— 不是两张牌各自冒个泡，是一对连起来了。
+  function link(a, b, col) {
+    lines.push({ x1: a.x, y1: a.y, x2: b.x, y2: b.y, life: 0, ttl: 0.9, col: col });
+    for (var i = 0; i < 14; i++) {
+      var t = i / 13;
+      parts.push({
+        x: a.x + (b.x - a.x) * t,
+        y: a.y + (b.y - a.y) * t,
+        vx: (Math.random() - 0.5) * 24,
+        vy: (Math.random() - 0.5) * 24 - 8,
+        life: 0, ttl: 0.42 + Math.random() * 0.3,
+        size: 1.4 + Math.random() * 1.6,
+        c: col
+      });
+    }
+    if (parts.length > 240) parts.splice(0, parts.length - 240);
+    if (!raf) { lastT = 0; raf = requestAnimationFrame(tick); }
+  }
+
   function tick(ts) {
     if (!lastT) lastT = ts;
     var dt = Math.min(0.06, (ts - lastT) / 1000);
     lastT = ts;
     ctx.clearRect(0, 0, cw, ch);
+    for (var li = lines.length - 1; li >= 0; li--) {
+      var L = lines[li];
+      L.life += dt;
+      if (L.life >= L.ttl) { lines.splice(li, 1); continue; }
+      var lk = 1 - L.life / L.ttl;
+      ctx.globalAlpha = Math.max(0, Math.min(1, lk));
+      ctx.strokeStyle = L.col;
+      ctx.lineWidth = 1.2 + 2.6 * lk;
+      ctx.beginPath();
+      ctx.moveTo(L.x1, L.y1);
+      ctx.lineTo(L.x2, L.y2);
+      ctx.stroke();
+      ctx.globalAlpha = Math.max(0, Math.min(1, lk * 1.3));
+      ctx.fillStyle = L.col;
+      ctx.beginPath(); ctx.arc(L.x1, L.y1, 3.2 * lk, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath(); ctx.arc(L.x2, L.y2, 3.2 * lk, 0, Math.PI * 2); ctx.fill();
+    }
     for (var i = parts.length - 1; i >= 0; i--) {
       var p = parts[i];
       p.life += dt;
@@ -303,7 +346,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       ctx.fill();
     }
     ctx.globalAlpha = 1;
-    if (parts.length) raf = requestAnimationFrame(tick);
+    if (parts.length || lines.length) raf = requestAnimationFrame(tick);
     else { raf = 0; ctx.clearRect(0, 0, cw, ch); }
   }
 
@@ -432,15 +475,19 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       a.el.classList.add('matched');
       card.el.classList.add('matched');
       matchedCount += 1;
+      combo += 1;
       sfxMatch(matchedCount);
       var p1 = cardCenter(a), p2 = cardCenter(card);
+      link(p1, p2, combo >= 3 ? '#ffb347' : '#7ff0dc');
       burst(p1.x, p1.y, 9, '#7ff0dc', '#ffd166');
       burst(p2.x, p2.y, 9, '#7ff0dc', '#ffd166');
+      if (combo >= 3) sfxCombo(combo);
       if (matchedCount === PAIRS) finish();
     } else {
       lock = true;
       var x = first, y = card;
       first = null;
+      combo = 0;
       sfxMiss();
       x.el.classList.add('shake');
       y.el.classList.add('shake');
@@ -515,6 +562,8 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     stopTimer();
     overlay.classList.remove('show');
     parts = [];
+    lines = [];
+    combo = 0;
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     ctx.clearRect(0, 0, cw, ch);
     first = null;
