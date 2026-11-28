@@ -205,12 +205,14 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   var flash = document.getElementById('flash');
 
   var phase = 'idle';          // idle | countdown | waiting | armed | result | foul
-  var waitTimer = 0, cdTimer = 0;
+  var waitTimer = 0, cdTimer = 0, armedGuard = 0;
   var armedAt = 0, meterRaf = 0;
   var best = 0;
   var session = [];            // 本次会话成绩（用于均速）
 
   try { best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0; } catch (e) { best = 0; }
+  // 低于人类物理下限的历史值（多半是当年用脚本点出来的）直接作废，不让它挂在榜上
+  if (best && best < 60) best = 0;
   renderBest();
 
   /* ---------- 音效 ---------- */
@@ -385,7 +387,10 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   /* ---------- 流程 ---------- */
   function begin() {
     clearTimeout(waitTimer);
+    clearInterval(cdTimer);
     clearTimeout(cdTimer);
+    clearTimeout(armedGuard);
+    waitTimer = 0; cdTimer = 0; armedGuard = 0;
     cancelAnimationFrame(meterRaf);
     gauge.style.display = 'none';
     cdEl.textContent = '3';
@@ -408,6 +413,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
         sfxCd(n);
       } else {
         clearInterval(cdTimer);
+        cdTimer = 0;
         cdEl.classList.remove('on');
         waitGreen();
       }
@@ -423,6 +429,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   }
 
   function arm() {
+    waitTimer = 0;
     setPhase('armed', 'armed');
     armedAt = performance.now();
     mainLine.textContent = '点！';
@@ -440,19 +447,59 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       meterRaf = requestAnimationFrame(meter);
     };
     meterRaf = requestAnimationFrame(meter);
+    // 放开手不点，秒表会一直空转、页面没有任何结论。3.2 秒后直接判"没出手"。
+    armedGuard = setTimeout(timeUp, 3200);
+  }
+
+  function timeUp() {
+    if (phase !== 'armed') return;
+    armedGuard = 0;
+    cancelAnimationFrame(meterRaf);
+    setPhase('foul', 'foul');
+    cdEl.classList.remove('on');
+    nowEl.textContent = '—';
+    gauge.style.display = 'none';
+    mainLine.textContent = '';
+    var line = document.createElement('p');
+    line.className = 'ms';
+    line.textContent = '没出手';
+    mainLine.appendChild(line);
+    subLine.textContent = '';
+    var t = document.createElement('p');
+    t.className = 'rank warm';
+    t.innerHTML = 'MISS<em>3 秒没点，这局不算</em>';
+    subLine.appendChild(t);
+    renderRuns(readRuns(), null);
+    foot.textContent = '再点一次 · 重新等';
+    sfxFoul(); doFlash('bad');
   }
 
   function finish(evt) {
     cancelAnimationFrame(meterRaf);
-    var ms = Math.max(1, Math.round(performance.now() - armedAt));
-    var rk = rankOf(ms);
+    clearTimeout(armedGuard);
+    armedGuard = 0;
+    waitTimer = 0;
+    // 用事件自身的时间戳收尾，而不是回调执行时的 performance.now()：
+    // 主线程一忙，排队等帧的时间也会被算进成绩，好手会被系统冤枉。
+    var endT = performance.now();
+    if (evt && typeof evt.timeStamp === 'number' && evt.timeStamp > 0) {
+      var ts = evt.timeStamp;
+      if (ts <= endT && endT - ts < 400) endT = ts;
+    }
+    var ms = Math.max(1, Math.round(endT - armedAt));
+    // 人从看见绿到手指落下，物理下限约 60ms。比这更快的读数只可能是脚本或预判连点，
+    // 记进榜就等于自己承认这个榜是假的。
+    var suspect = ms < 60;
+    var rk = suspect ? { k: 'warm', n: 'SUSPECT', cn: '低于人类物理下限' } : rankOf(ms);
     setPhase('result', 'result');
     nowEl.textContent = ms + 'ms';
-    session.push(ms);
-    if (session.length > 5) session.shift();
-    renderAvg();
+    if (!suspect) {
+      session.push(ms);
+      if (session.length > 5) session.shift();
+      renderAvg();
+    }
 
-    var isBest = !best || ms < best;
+    var isBest = !suspect && (!best || ms < best);
     if (isBest) {
       best = ms;
       renderBest();
@@ -460,7 +507,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     }
 
     var run = { ms: ms, at: Date.now(), id: Date.now() + '-' + Math.random().toString(36).slice(2, 8) };
-    var list = pushRun(run);
+    var list = suspect ? readRuns() : pushRun(run);
 
     cdEl.classList.remove('on');
     mainLine.textContent = '';
@@ -472,7 +519,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     subLine.textContent = '';
     var rkLine = document.createElement('p');
     rkLine.className = 'rank ' + rk.k;
-    rkLine.innerHTML = rk.n + '<em>' + rk.cn + (isBest ? ' · 新纪录' : '') + '</em>';
+    rkLine.innerHTML = rk.n + '<em>' + rk.cn + (isBest ? ' · 新纪录' : (suspect ? ' · 不计入成绩' : '')) + '</em>';
     subLine.appendChild(rkLine);
 
     gauge.style.display = 'block';
@@ -493,6 +540,12 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   function foul() {
     clearTimeout(waitTimer);
+    // 倒计时里抢跑：如果把倒计时的定时器留着，1 秒后它照样走完、照样变绿开表，
+    // 于是"抢跑判负"形同虚设，玩家再点一下就能拿到一个有效成绩。
+    clearInterval(cdTimer);
+    clearTimeout(cdTimer);
+    clearTimeout(armedGuard);
+    cdTimer = 0; waitTimer = 0; armedGuard = 0;
     cancelAnimationFrame(meterRaf);
     setPhase('foul', 'foul');
     cdEl.classList.remove('on');
@@ -523,14 +576,14 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   pad.addEventListener('click', function (e) { onTap(e); });
   pad.addEventListener('keydown', function (e) {
-    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); onTap(null); }
+    if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); onTap(e); }
   });
 
   document.addEventListener('keydown', function (e) {
     if (e.key === ' ' || e.key === 'Enter') {
       if (e.target === pad) return;
       e.preventDefault();
-      onTap(null);
+      onTap(e);
     }
     if (e.key === 'r' || e.key === 'R') begin();
   });
@@ -547,6 +600,13 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   sizeFx();
   recEl.innerHTML = '';
+
+  // 只读验收探针：只在 ?dbg=1 时存在
+  if (/[?&]dbg=1/.test(location.search)) {
+    window.__probe = function () {
+      return { phase: phase, best: best, session: session.slice(), cdPending: !!cdTimer, waitPending: !!waitTimer, guardPending: !!armedGuard, armedAt: armedAt };
+    };
+  }
 })();
 </script>
 <script src="../assets/pulse.js?v=20261128f" defer></script>
