@@ -49,7 +49,7 @@
     var line = document.getElementById('pulse-line');
     if (!line) return;
     var BASE = 'https://abacus.jasoncameron.dev';
-    var NS = 'medianigray-paly-v1';
+    var NS = 'medianigray-paly-v2';
     var d = new Date();
     var today = '' + d.getFullYear() + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
     function get(k) {
