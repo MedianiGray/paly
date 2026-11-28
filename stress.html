@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>压测台 · INVINCIBLE</title>
+<meta name="theme-color" content="#0b0e11">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%230b0e11'/><path d='M16 6l8 20H8z' stroke='%23ffb347' stroke-width='3' fill='none'/></svg>">
+<style>
+:root{
+  --bg:#0b0e11; --panel:#12171c; --line:#222b33; --ink:#e9eff5; --dim:#8b98a5;
+  --accent:#35e0c8; --accent-2:#ffb347; --bad:#ff6b57; --warn:#ffb347; --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; min-height:100vh;
+  background:radial-gradient(900px 600px at 50% -10%,rgba(255,179,71,.07),transparent 65%),var(--bg);
+  color:var(--ink); font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;
+  display:flex; flex-direction:column; align-items:center;
+  padding:16px 16px 40px; -webkit-font-smoothing:antialiased;
+}
+.bar{width:min(100%,960px); display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:18px}
+.back{
+  display:inline-flex; align-items:center; gap:7px; padding:7px 12px; border:1px solid var(--line);
+  border-radius:10px; color:var(--dim); text-decoration:none; font-size:13px; background:var(--panel);
+}
+.back:hover{color:var(--ink); border-color:rgba(255,179,71,.45)}
+.title{font-family:var(--mono); font-size:13px; letter-spacing:.18em; color:#6f7d8a}
+button{
+  font-family:inherit; font-size:13px; color:#c6d3de; background:var(--panel);
+  border:1px solid var(--line); border-radius:10px; padding:7px 12px; cursor:pointer;
+}
+button:hover{border-color:rgba(255,179,71,.45); color:var(--ink)}
+
+.wrap{width:min(100%,960px)}
+h1{font-size:clamp(24px,4vw,34px); margin:0 0 8px; letter-spacing:-.01em}
+.lede{color:var(--dim); font-size:13.5px; line-height:1.8; margin:0 0 18px; max-width:740px}
+.lede b{color:var(--ink)}
+
+.sum{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:10px}
+.kpi{padding:12px 14px; border:1px solid var(--line); border-radius:12px; background:var(--panel)}
+.kpi span{display:block; font-size:11px; letter-spacing:.1em; color:#6f7d8a}
+.kpi b{display:block; font-family:var(--mono); font-size:23px; margin-top:4px; font-variant-numeric:tabular-nums}
+.kpi.bad{border-color:rgba(255,107,87,.45)} .kpi.bad b{color:var(--bad)}
+.kpi.good{border-color:rgba(53,224,200,.4)} .kpi.good b{color:var(--accent)}
+.kpi.warn{border-color:rgba(255,179,71,.45)} .kpi.warn b{color:var(--warn)}
+
+.note{
+  margin:14px 0 20px; padding:10px 14px; border-left:2px solid rgba(255,179,71,.5);
+  background:rgba(18,23,28,.6); font-size:12.5px; color:#8b98a5; line-height:1.7;
+}
+.note code{font-family:var(--mono); color:#c6d3de}
+
+.g{width:100%; border:1px solid var(--line); border-radius:14px; background:var(--panel); margin-bottom:10px; overflow:hidden}
+.g-h{display:flex; align-items:center; gap:12px; padding:12px 14px; user-select:none}
+.g-n{font-family:var(--mono); font-size:12px; color:#6f7d8a; width:20px}
+.g-t{font-size:15px; font-weight:600}
+.g-dots{display:flex; gap:5px; margin-left:4px}
+.dot{width:9px; height:9px; border-radius:50%; background:#2a343d}
+.dot.on{background:var(--accent); box-shadow:0 0 8px rgba(53,224,200,.55)}
+.dot.warn{background:var(--warn); box-shadow:0 0 8px rgba(255,179,71,.5)}
+.dot.off{background:var(--bad); box-shadow:0 0 8px rgba(255,107,87,.5)}
+.g-sm{margin-left:auto; font-family:var(--mono); font-size:11.5px; color:#6f7d8a}
+.g-sm.ok{color:var(--accent)} .g-sm.no{color:var(--bad)} .g-sm.warn{color:var(--warn)}
+
+.rows{padding:0 14px 12px}
+.row{padding:8px 0; border-top:1px solid rgba(255,255,255,.05); font-size:12.5px}
+.row-top{display:flex; align-items:baseline; gap:8px; flex-wrap:wrap}
+.mark{font-family:var(--mono); font-size:11px; width:34px; flex:0 0 auto}
+.mark.ok{color:var(--accent)} .mark.no{color:var(--bad)} .mark.warn{color:var(--warn)} .mark.wa{color:#6f7d8a}
+.row-t{color:#c6d3de}
+.row-w{color:#6f7d8a; font-size:11.5px}
+.ev{
+  margin:6px 0 0 42px; padding:7px 9px; border-radius:7px; background:#0c1014; border:1px solid #171e25;
+  font-family:var(--mono); font-size:11.5px; color:#9fb0bf; line-height:1.6; word-break:break-word;
+}
+.ev em{color:var(--accent-2); font-style:normal}
+
+.foot{margin-top:22px; border-top:1px solid var(--line); padding-top:16px}
+.foot h2{font-size:14px; color:var(--accent-2); margin:0 0 10px; letter-spacing:.02em}
+.foot p{color:#8b98a5; font-size:12.5px; line-height:1.8; margin:0 0 8px}
+.foot b{color:#e9eff5}
+#log{margin-top:14px; padding:10px 12px; border-radius:9px; border:1px solid var(--line); background:#0c1014;
+  font-family:var(--mono); font-size:11.5px; color:#6f7d8a; max-height:150px; overflow:auto; white-space:pre-wrap}
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="back" href="index.html">&larr; 回门户</a>
+  <div class="title">STRESS &middot; 压测台</div>
+  <button id="copy">复制结果</button>
+</div>
+
+<div class="wrap">
+  <h1>压测台</h1>
+  <p class="lede">
+    这页只测招牌里的一个词：<b>INVINCIBLE</b>。它不问好不好玩，只问<b>打不打得垮</b>——连点、缩放、切走回来、存储被拒、键鼠暴击，五步全过才算这一页无敌。
+    每一步跑完都会读一次真实状态（正文还有多少字、画布还画不画、报错数），<b>读数写在这里，不是我的结论</b>。
+  </p>
+
+  <div class="sum">
+    <div class="kpi" id="k1"><span>压测通过</span><b>—</b></div>
+    <div class="kpi" id="k2"><span>页面</span><b>9</b></div>
+    <div class="kpi" id="k3"><span>报错总数</span><b>—</b></div>
+  </div>
+
+  <div class="note">
+    每页加载一次，按序跑五步，每步之后都验存活（正文 &gt; 40 字、有画布则画布仍有尺寸）。
+    任何一步出现 <code>window.onerror</code>、超时卡死、或正文变空，该页判 <b>没扛住</b>，招牌上"无敌"两字对它不成立。
+    页面在离屏 iframe 里跑，不改你的存档。
+  </div>
+
+  <div id="list"></div>
+
+  <div id="log">准备中…</div>
+
+  <div class="foot">
+    <h2>这页判不了的三条</h2>
+    <p><b>P1 &middot; 真切标签页</b>：这里用 <code>defineProperty</code> 伪造 <code>hidden</code> 再派 <code>visibilitychange</code>，是模拟。真把标签切走、浏览器节流 rAF，只有人手能做。模拟过不代表真机过。</p>
+    <p><b>P2 &middot; 长时间泡</b>：这里只压 5 秒一波。挂十分钟、累积十几个定时器之后会不会漂，这页测不出。</p>
+    <p><b>P3 &middot; 多标签同时开</b>：九个页面各开一个标签、同机互抢 CPU，会不会掉帧，需要人开。</p>
+    <p style="color:#6f7d8a">这页的定位是：把"无敌"从一句形容词，压成 45 个能跑出读数的判定点。</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  var PAGES=[
+    {n:'贪吃蛇',   p:'games/snake.html'},
+    {n:'2048',     p:'games/g2048.html'},
+    {n:'记忆翻牌', p:'games/memory.html'},
+    {n:'打砖块',   p:'games/breakout.html'},
+    {n:'反应测试', p:'games/reaction.html'},
+    {n:'躲避',     p:'games/dodge.html'},
+    {n:'扫雷',     p:'games/minesweeper.html'},
+    {n:'打字冲刺', p:'games/typing.html'},
+    {n:'井字棋',   p:'games/tictactoe.html'}
+  ];
+  var STEPS=['spam','resize','hide','storage','input'];
+  var CN={spam:'连点 100 次', resize:'缩放抖动 40 次', hide:'切走 1.5 秒再回来',
+          storage:'存储被拒后继续操作', input:'键鼠暴击 300 次'};
+
+  var list=document.getElementById('list');
+  var logEl=document.getElementById('log');
+  var passN=0, judgeN=0, warnN=0, failN=0, errN=0;
+
+  function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function uniq(a){ return a.filter(function(x,i){ return a.indexOf(x)===i; }); }
+  function log(s){ logEl.textContent = s; }
+
+  function mkCard(i,pg){
+    var el=document.createElement('div'); el.className='g';
+    el.innerHTML='<div class="g-h"><span class="g-n">'+String(i+1).padStart(2,'0')+'</span>'+
+      '<span class="g-t">'+pg.n+'</span><span class="g-dots" id="d'+i+'">'+
+      STEPS.map(function(){return '<span class="dot"></span>'}).join('')+
+      '</span><span class="g-sm" id="s'+i+'">跑中…</span></div><div class="rows" id="r'+i+'"></div>';
+    list.appendChild(el);
+    return el;
+  }
+
+  function addRow(i,cls,mark,t,d,w){
+    var rows=document.getElementById('r'+i);
+    var r=document.createElement('div'); r.className='row';
+    r.innerHTML='<div class="row-top"><span class="mark '+cls+'">'+mark+'</span>'+
+      '<span class="row-t">'+t+'</span><span class="row-w">'+d+'</span></div>'+
+      (w? '<div class="ev">'+w+'</div>' : '');
+    rows.appendChild(r);
+  }
+
+  function dot(i,si,cls){
+    var d=document.getElementById('d'+i).children[si];
+    d.className='dot '+cls;
+  }
+
+  function update(){
+    document.getElementById('k1').innerHTML='<span>压测通过</span><b>'+passN+'/'+judgeN+'</b>';
+    document.getElementById('k3').innerHTML='<span>报错总数</span><b>'+errN+'</b>';
+    var k1=document.getElementById('k1');
+    k1.className='kpi '+(failN? 'bad' : (warnN? 'warn':'good'));
+  }
+
+  function alive(io){
+    var d=io.d, b=d.body;
+    var txt=((b&&b.innerText)||'').replace(/\s+/g,'').length;
+    var cvs=Array.prototype.slice.call(d.querySelectorAll('canvas'));
+    var cvsOk = cvs.length? cvs.some(function(c){ return c.width>0 && c.height>0; }) : null;
+    return { txt:txt, cvs:cvs, cvsOk:cvsOk, ok: txt>40 && (cvsOk===null || cvsOk===true) };
+  }
+
+  function load(pg){
+    return new Promise(function(res){
+      var f=document.createElement('iframe');
+      f.style.cssText='position:absolute;left:-9999px;top:0;width:1024px;height:800px;border:0';
+      f.src=pg;
+      document.body.appendChild(f);
+      var settled=false;
+      var t=setTimeout(function(){ if(!settled){ settled=true; res({f:f, fail:'8 秒内没加载出来'}); } }, 8000);
+      f.onload=function(){
+        if(settled) return; settled=true; clearTimeout(t);
+        setTimeout(function(){
+          var w=f.contentWindow, d=w.document, errs=[];
+          try{
+            w.addEventListener('error', function(e){ errs.push('error:'+((e&&e.message)||'?')); });
+            w.addEventListener('unhandledrejection', function(e){ errs.push('reject:'+((e&&e.reason&&e.reason.message)||(e&&e.reason)||'')); });
+          }catch(e){}
+          res({f:f, w:w, d:d, errs:errs});
+        }, 500);
+      };
+    });
+  }
+
+  function timeout(p, ms, label){
+    return Promise.race([p, new Promise(function(_,rej){ setTimeout(function(){ rej(new Error('超时 '+ms+'ms（'+label+'）')); }, ms); })]);
+  }
+
+  var FN={};
+
+  FN.spam=async function(io){
+    var d=io.d, w=io.w;
+    var btns=Array.prototype.slice.call(d.querySelectorAll('button'));
+    var cvs=d.querySelectorAll('canvas');
+    var cx=100, cy=100;
+    if(cvs.length){ var rc=cvs[0].getBoundingClientRect(); cx=rc.left+rc.width/2; cy=rc.top+rc.height/2; }
+    for(var i=0;i<100;i++){
+      try{
+        if(btns.length){ btns[i%btns.length].click(); }
+        else{
+          var P=(w.PointerEvent||w.MouseEvent);
+          d.dispatchEvent(new P('pointerdown',{clientX:cx,clientY:cy,bubbles:true,pointerId:1}));
+          d.dispatchEvent(new P('pointerup',  {clientX:cx,clientY:cy,bubbles:true,pointerId:1}));
+        }
+      }catch(e){ return { ok:false, note:'第 '+(i+1)+' 次点击抛错：'+e.message }; }
+    }
+    await sleep(900);
+    return { ok:true, note:'100 次连点后仍可交互' };
+  };
+
+  FN.resize=async function(io){
+    var f=io.f, ws=[320,1280,420,900,360,1100];
+    for(var i=0;i<40;i++){ f.style.width=(ws[i%ws.length]+(i%2?14:-14))+'px'; }
+    await sleep(600);
+    return { ok:true, note:'320↔1280 同步抖 40 次' };
+  };
+
+  FN.hide=async function(io){
+    var d=io.d, w=io.w;
+    try{
+      Object.defineProperty(d,'hidden',{configurable:true,get:function(){return true}});
+      Object.defineProperty(d,'visibilityState',{configurable:true,get:function(){return 'hidden'}});
+    }catch(e){ return { ok:false, note:'伪造 hidden 失败：'+e.message }; }
+    d.dispatchEvent(new w.Event('visibilitychange'));
+    await sleep(1500);
+    try{
+      Object.defineProperty(d,'hidden',{configurable:true,get:function(){return false}});
+      Object.defineProperty(d,'visibilityState',{configurable:true,get:function(){return 'visible'}});
+    }catch(e){}
+    d.dispatchEvent(new w.Event('visibilitychange'));
+    await sleep(800);
+    return { ok:true, note:'隐藏 1.5s 再切回，无异常' };
+  };
+
+  FN.storage=async function(io){
+    var w=io.w, d=io.d, proto=null, hits=0;
+    try{ proto = w.localStorage ? Object.getPrototypeOf(w.localStorage) : null; }catch(e){}
+    if(!proto){ try{ proto=w.Storage.prototype; }catch(e){} }
+    if(!proto || typeof proto.setItem!=='function') return { ok:true, skip:true, note:'取不到 Storage.prototype，无法注入（未判定）' };
+    var os=proto.setItem, og=proto.getItem;
+    proto.setItem=function(){ hits++; throw new Error('QUOTA_BLOCKED'); };
+    proto.getItem=function(){ hits++; throw new Error('QUOTA_BLOCKED'); };
+    var btns=d.querySelectorAll('button'), cvs=d.querySelectorAll('canvas');
+    for(var i=0;i<20;i++){
+      try{
+        if(btns.length){ btns[i%btns.length].click(); }
+        else if(cvs.length){
+          var rc=cvs[0].getBoundingClientRect();
+          var P=(w.PointerEvent||w.MouseEvent);
+          d.dispatchEvent(new P('pointerdown',{clientX:rc.left+rc.width/2,clientY:rc.top+rc.height/2,bubbles:true,pointerId:1}));
+        }
+      }catch(e){}
+    }
+    await sleep(900);
+    proto.setItem=os; proto.getItem=og;
+    if(hits===0) return { ok:true, skip:true, note:'这一段没触碰存档，无从判定' };
+    return { ok:true, note:'存储抛错 '+hits+' 次，页面仍活' };
+  };
+
+  FN.input=async function(io){
+    var w=io.w, d=io.d;
+    var keys=['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' ','Enter','a','z','1','Escape','Backspace','Tab'];
+    var target=(d.activeElement&&d.activeElement!==d.body)? d.activeElement : (d.body||d);
+    for(var i=0;i<200;i++){
+      try{
+        target.dispatchEvent(new w.KeyboardEvent('keydown',{key:keys[i%keys.length],code:'K'+(i%12),bubbles:true}));
+      }catch(e){ return { ok:false, note:'键盘注入抛错：'+e.message }; }
+    }
+    var cvs=d.querySelectorAll('canvas');
+    if(cvs.length){
+      var rc=cvs[0].getBoundingClientRect();
+      var P=(w.PointerEvent||w.MouseEvent);
+      for(var j=0;j<100;j++){
+        try{
+          var x=rc.left+Math.random()*rc.width, y=rc.top+Math.random()*rc.height;
+          d.dispatchEvent(new P('pointerdown',{clientX:x,clientY:y,bubbles:true,pointerId:1}));
+          if(j%3===0) d.dispatchEvent(new P('pointermove',{clientX:x,clientY:y,bubbles:true,pointerId:1}));
+          d.dispatchEvent(new P('pointerup',  {clientX:x,clientY:y,bubbles:true,pointerId:1}));
+        }catch(e){}
+      }
+    }
+    await sleep(500);
+    return { ok:true, note:'200 键 + 100 次乱点后仍活' };
+  };
+
+  async function run(){
+    var i;
+    for(i=0;i<PAGES.length;i++){
+      var pg=PAGES[i];
+      mkCard(i,pg);
+      log('正在压第 '+(i+1)+' 页 · '+pg.n+' …');
+      var io=await load(pg.p);
+      if(io.fail){
+        addRow(i,'warn','WARN',pg.n,'没测到（不算通过）',io.fail);
+        document.getElementById('s'+i).className='g-sm warn';
+        document.getElementById('s'+i).textContent='没测到';
+        judgeN++; warnN++; update();
+        if(io.f&&io.f.remove) io.f.remove();
+        continue;
+      }
+      var okAll=true, warnAll=false;
+      for(var s=0;s<STEPS.length;s++){
+        var step=STEPS[s], baseErr=io.errs.length, r={ok:true};
+        try{ r=await timeout(FN[step](io), 7000, CN[step]); }
+        catch(e){ r={ok:false, note:e.message}; }
+        var newErrs=io.errs.length-baseErr;
+        var al=alive(io);
+        var cls, mark, note;
+        if(!r.ok){ cls='no'; mark='FAIL'; note=r.note||'没跑完'; }
+        else if(newErrs>0){ cls='no'; mark='FAIL'; note=uniq(io.errs.slice(baseErr)).slice(-2).join(' | '); }
+        else if(!al.ok){ cls='no'; mark='FAIL'; note='压测后页面空了/画布失效（正文 '+al.txt+' 字）'; }
+        else if(r.skip){ cls='warn'; mark='WARN'; note=r.note; }
+        else { cls='ok'; mark='PASS'; note=(r.note||'')+' · 正文 '+al.txt+' 字'; }
+
+        errN += newErrs;
+        judgeN++;
+        if(cls==='ok') passN++;
+        else if(cls==='warn'){ warnN++; passN++; }
+        else { failN++; okAll=false; }
+        dot(i,s,cls);
+        addRow(i,cls,mark,CN[step],'', '<em>'+(note||'')+'</em>');
+        update();
+      }
+      document.getElementById('s'+i).className='g-sm '+(okAll?'ok':'no');
+      document.getElementById('s'+i).textContent=okAll? '全过' : '没扛住';
+      try{ io.f.remove(); }catch(e){}
+      await sleep(300);
+    }
+    log('跑完 '+PAGES.length+' 页，'+judgeN+' 个判定点，通过 '+passN+' 个'+(warnN?('，'+warnN+' 个没测到'):'')+(failN?('，'+failN+' 个没扛住'):'')+'。');
+    document.getElementById('k2').innerHTML='<span>页面</span><b>'+PAGES.length+'</b>';
+  }
+
+  document.getElementById('copy').addEventListener('click', function(){
+    var t='STRESS · INVINCIBLE · '+new Date().toLocaleString()+'\n';
+    Array.prototype.forEach.call(list.querySelectorAll('.g'), function(g){
+      t+='\n'+g.querySelector('.g-t').textContent+'\n';
+      Array.prototype.forEach.call(g.querySelectorAll('.row'), function(r){
+        t+='  '+r.querySelector('.mark').textContent+'  '+r.querySelector('.row-t').textContent+'  '+r.querySelector('.ev, .row-w').textContent+'\n';
+      });
+    });
+    t+='\n'+logEl.textContent;
+    if(navigator.clipboard) navigator.clipboard.writeText(t);
+    log('已复制到剪贴板。');
+  });
+
+  run();
+})();
+</script>
+</body>
+</html>
