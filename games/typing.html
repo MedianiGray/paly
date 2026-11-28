@@ -145,7 +145,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   <div class="stat best"><span class="label">最佳</span><strong id="best">—</strong></div>
 </div>
 
-<p class="goal"><b>目标</b>照抄这一段，60 秒内数你打对多少字。打错停在那，改对才能往下；整段打完算清台。<b>打错的那个字会被划一道叉，改对了叉也不消失</b>——这一遍你划了几个，打完一眼能数。</p>
+<p class="goal"><b>目标</b>照抄这一段，60 秒内数你打对多少字。打错一个字只扣这一个，位置照样往前走，不用退格重打；整段打完且一字不错才算清台。<b>打错的那个字会被划一道叉，改对了叉也不消失</b>——这一遍你划了几个，打完一眼能数。</p>
 
 <div class="stage" id="stage">
   <div class="text" id="text" aria-label="要打的内容"></div>
@@ -212,6 +212,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   var spans = [];
   var correct = 0;
   var prevCorrect = 0;
+  var prevLen = 0;            // 上一次结算时的输入长度，用来找出"这一笔新打的错"
   var combo = 0;
   var marks = {};
   var best = 0;
@@ -404,49 +405,54 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     return c;
   }
 
+  // 判定模型：位置按"已输入长度"走，每打一个字就前进一格。
+  // 旧版要求从第一个字到当前位置全都连续正确，中文字段里选错一次候选词，
+  // 后面的字就算全对也不计，成绩当场冻死，只能退格重打——那不是在考打字，是在考退格。
   function paint() {
     var v = inputEl.value;
-    var n = v.length;
-    var i = 0;
-    while (i < n && i < target.length && v[i] === target[i]) i++;
-    correct = i;
+    var n = Math.min(v.length, target.length);
+    var matched = 0, freshBad = -1;
+    for (var q = 0; q < n; q++) {
+      if (v.charAt(q) === target.charAt(q)) matched++;
+      else if (q >= prevLen && freshBad < 0) freshBad = q;
+    }
+    correct = matched;
 
     for (var k = 0; k < spans.length; k++) {
       var cls = '';
-      if (k < i) cls = 'ok';
-      else if (k < n) cls = 'bad';
-      else if (k === i && state === 'running') cls = 'cur';
+      if (k < n) cls = (v.charAt(k) === target.charAt(k)) ? 'ok' : 'bad';
+      else if (k === n && state === 'running') cls = 'cur';
       // 错过的字永久留一道叉：改对了也不抹掉，这一遍划了几个打完一数就知道
       if (marks[k]) cls = (cls ? cls + ' ' : '') + 'mar';
       spans[k].className = cls;
     }
-    scoreEl.textContent = i + ' 字';
+    scoreEl.textContent = matched + ' 字';
 
     // 新打对的字：爆点 + 键声 + 每 10 字里程碑
-    if (i > prevCorrect) {
-      for (var q = prevCorrect; q < i; q++) {
-        var p = spanPoint(q);
-        if (p) burst(p.x, p.y - 4, 2, q % 3 === 0 ? '#ffd166' : '#7ff0dc', 26);
+    if (matched > prevCorrect) {
+      for (var w = prevLen; w < n; w++) {
+        if (v.charAt(w) !== target.charAt(w)) continue;
+        var p = spanPoint(w);
+        if (p) burst(p.x, p.y - 4, 2, w % 3 === 0 ? '#ffd166' : '#7ff0dc', 26);
       }
-      combo += (i - prevCorrect);
+      combo += (matched - prevCorrect);
       sfxKey(combo);
-      if (Math.floor(i / 10) > milestone) {
-        milestone = Math.floor(i / 10);
+      if (Math.floor(matched / 10) > milestone) {
+        milestone = Math.floor(matched / 10);
         sfxMark();
       }
-    } else if (i < prevCorrect) {
+    } else if (matched < prevCorrect) {
       combo = 0;
-      milestone = Math.floor(i / 10);
+      milestone = Math.floor(matched / 10);
     }
 
-    // 打错：红闪 + 低音 + 抖 + 在这个字上留一道叉
-    if (n > i && n > prevCorrect) {
+    // 新输入里的第一处错：红闪 + 低音 + 在这个字上留一道叉
+    if (freshBad >= 0) {
       sfxMiss();
-      if (i < target.length && !marks[i]) {
-        marks[i] = 1;
+      if (!marks[freshBad]) {
+        marks[freshBad] = 1;
         scarEl.textContent = countMarks();
         sfxScar();
-        spans[i].className = (spans[i].className ? spans[i].className + ' ' : '') + 'mar';
       }
       inputEl.classList.remove('err');
       void inputEl.offsetWidth;
@@ -454,9 +460,13 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       setTimeout(function () { inputEl.classList.remove('err'); }, 280);
     }
 
-    prevCorrect = i;
+    prevLen = n;
+    prevCorrect = matched;
 
-    if (i === target.length && state === 'running') finish(true);
+    // 长度打满：全对才算整段打完；带着疤打完就按用时结算
+    if (state === 'running' && n === target.length) {
+      finish(matched === n);
+    }
   }
 
   /* ---------- 流程 ---------- */
@@ -565,6 +575,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     composing = false;
     correct = 0;
     prevCorrect = 0;
+    prevLen = 0;
     combo = 0;
     milestone = 0;
     marks = {};
@@ -633,6 +644,14 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   buildText();
   paint();
   sizeFx();
+
+  // 只读验收探针：只在 ?dbg=1 时存在
+  if (/[?&]dbg=1/.test(location.search)) {
+    window.__probe = function () {
+      return { state: state, len: target.length, correct: correct, prevLen: prevLen,
+               marks: countMarks(), value: inputEl.value };
+    };
+  }
 })();
 </script>
 <script src="../assets/pulse.js?v=20261128f" defer></script>
