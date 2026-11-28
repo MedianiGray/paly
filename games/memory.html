@@ -541,6 +541,23 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     ovRankCn.textContent = rk.cn;
     ovTitle.textContent = isBest ? '清台了 · 新纪录' : '清台了';
     showStats(moves, seconds);
+    // 下次目标：结束屏上给一个具体数字，别只给一堆数据
+    (function () {
+      var next;
+      if (isBest) {
+        next = '这是你新的最好成绩——下一局就守它。';
+      } else if (best) {
+        next = (moves === best.moves)
+          ? '步数追平最好——差的是用时，下一局快一点。'
+          : '距你的最好（' + best.moves + ' 步）还差 ' + (moves - best.moves) + ' 步。';
+      } else {
+        next = '前五还空着，再来一局就能占一个位。';
+      }
+      var d = document.createElement('div');
+      d.style.cssText = 'grid-column:1/-1;margin-top:10px;font:600 12px/1.6 var(--mono,monospace);color:#35e0c8';
+      d.textContent = next;
+      ovStats.appendChild(d);
+    })();
     renderRuns(list, run.id);
     ovBtn.textContent = '再来一局';
     overlay.classList.add('show');
