@@ -147,7 +147,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   <div class="stat"><span class="label">手数</span><strong id="moves">0</strong></div>
 </div>
 
-<p class="goal"><b>目标</b>先连成三个。机器也在抢，先连成就赢；九格填满无人连成算平。</p>
+<p class="goal"><b>目标</b>先连成三个。机器也在抢，先连成就赢；九格填满无人连成算平。它有个毛病：开局总想占最上面一排，偶尔还会看漏一步——那两处就是你的机会。</p>
 
 <div class="status" id="status">你先手，点一格落子。</div>
 
@@ -201,6 +201,8 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   var myMoves = 0;
   var t0 = 0;
   var thinkTimer = null;
+  var PREF = [0, 1, 2];   // 它的偏好：最上面一排
+  var slack = 0;          // 这一局它还剩几次"看漏"
 
   /* ---------- 音效 ---------- */
   var AC = null, soundOn = true;
@@ -417,7 +419,11 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     return true;
   }
 
-  // 机器：先抢能赢的，再堵玩家的，然后中心、角、边。只有这一档。
+  // 机器：一个有脾气的人，不是完美防守机器。
+  // ① 自己能连成三个 → 立刻连（它不会放过杀你的机会）
+  // ② 你只差一格就赢 → 它通常会堵，但这一局它有 slack 次会看漏（人会漏）
+  // ③ 没有威胁时，它偏爱最上面一排 —— 这是你能读出来的固定路子
+  // ④ 否则中心、角、边
   function machineMove() {
     var i;
     for (i = 0; i < 9; i++) {
@@ -426,11 +432,22 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       if (winnerOf(grid)) { grid[i] = ''; return i; }
       grid[i] = '';
     }
+    var blockAt = -1;
     for (i = 0; i < 9; i++) {
       if (grid[i]) continue;
       grid[i] = 'X';
-      if (winnerOf(grid)) { grid[i] = ''; return i; }
+      if (winnerOf(grid)) { grid[i] = ''; blockAt = i; break; }
       grid[i] = '';
+    }
+    if (blockAt >= 0) {
+      if (slack > 0 && Math.random() < 0.5) {
+        slack -= 1;            // 这一次它没看见
+      } else {
+        return blockAt;
+      }
+    }
+    for (i = 0; i < PREF.length; i++) {
+      if (!grid[PREF[i]]) return PREF[i];
     }
     if (!grid[4]) return 4;
     var corners = [], cs = [0, 2, 6, 8];
@@ -566,6 +583,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     busy = true;
     myMoves = 0;
     parts = [];
+    slack = (Math.random() < 0.55) ? 1 : 0;   // 这一局它会不会看漏
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     ctx.clearRect(0, 0, cw, ch);
     movesEl.textContent = '0';
