@@ -148,7 +148,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   </div>
 </div>
 
-<p class="goal"><b>目标</b>八对牌全部配对。翻开两张算一步，步数越少越强；清台给评级。连对会在两张牌之间拉起一条线，连得越久线越亮——断了就从头再连。</p>
+<p class="goal"><b>目标</b>八对牌全部配对。翻开两张算一步，步数越少越强；清台给评级。连对会在两张牌之间拉起一条线，连得越久线越亮——断了就从头再连。<strong>每天一副固定的牌（今天这副 <span id="caseNo">—</span>），全网同一副，明天换。</strong>所以 8 步清台是真记住了这副牌，不是碰运气。</p>
 
 <div class="stage" id="stage">
   <div class="deck" id="deck" aria-label="记忆翻牌棋盘"></div>
@@ -258,7 +258,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   /* ---------- 粒子层 ---------- */
   var dpr = window.devicePixelRatio || 1;
-  var cw = 0, ch = 0, parts = [], lines = [], combo = 0, raf = 0, lastT = 0;
+  var cw = 0, ch = 0, parts = [], lines = [], combo = 0, maxCb = 0, raf = 0, lastT = 0;
 
   function sizeFx() {
     var r = stage.getBoundingClientRect();
@@ -390,9 +390,28 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   }
 
   /* ---------- 牌桌 ---------- */
-  function shuffle(arr) {
+  // 每天一副固定的牌：同一副牌全网一样，明天换。
+  // 随机发牌时，8 步清台多半是碰上；固定牌局之后，8 步只能是真记住。
+  function daySeed() {
+    var q = /[?&]seed=(\d+)/.exec(location.search);
+    if (q) return parseInt(q[1], 10);
+    var d = new Date();
+    return d.getFullYear() * 372 + (d.getMonth() + 1) * 31 + d.getDate();
+  }
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0;
+      a = a + 0x6D2B79F5 | 0;
+      var t = Math.imul(a ^ a >>> 15, 1 | a);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+
+  function shuffle(arr, rnd) {
     for (var i = arr.length - 1; i > 0; i--) {
-      var j = Math.floor(Math.random() * (i + 1));
+      var j = Math.floor(rnd() * (i + 1));
       var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
     }
     return arr;
@@ -401,7 +420,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   function build() {
     var pool = [];
     EMOJI.forEach(function (e) { pool.push(e); pool.push(e); });
-    shuffle(pool);
+    shuffle(pool, mulberry32(daySeed()));
 
     deckEl.innerHTML = '';
     cards = [];
@@ -476,6 +495,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       card.el.classList.add('matched');
       matchedCount += 1;
       combo += 1;
+      if (combo > maxCb) maxCb = combo;
       sfxMatch(matchedCount);
       var p1 = cardCenter(a), p2 = cardCenter(card);
       link(p1, p2, combo >= 3 ? '#ffb347' : '#7ff0dc');
@@ -509,7 +529,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     ovStats.innerHTML =
       '<div><span>步数</span><b>' + mv + '</b></div>' +
       '<div><span>用时</span><b>' + ms + 's</b></div>' +
-      '<div><span>失误</span><b>' + (mv - PAIRS) + '</b></div>';
+      '<div><span>最长连对</span><b>' + maxCb + '</b></div>';
   }
 
   function renderRuns(list, runId) {
@@ -533,7 +553,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
       renderBest();
     }
 
-    var run = { mv: moves, ms: seconds, at: Date.now(), id: Date.now() + '-' + Math.random().toString(36).slice(2, 8) };
+    var run = { mv: moves, ms: seconds, cb: maxCb, at: Date.now(), id: Date.now() + '-' + Math.random().toString(36).slice(2, 8) };
     var list = pushRun(run);
 
     ovRank.className = 'rank ' + rk.k;
@@ -564,6 +584,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     parts = [];
     lines = [];
     combo = 0;
+    maxCb = 0;
     if (raf) { cancelAnimationFrame(raf); raf = 0; }
     ctx.clearRect(0, 0, cw, ch);
     first = null;
@@ -590,7 +611,26 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   window.addEventListener('resize', function () { sizeFx(); });
 
+  // 牌局编号：把种子写成 YYMMDD，让"今天这副"看得见
+  (function () {
+    var el = document.getElementById('caseNo');
+    if (!el) return;
+    var d = new Date();
+    var s = String(d.getFullYear()).slice(2) + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
+    var q = /[?&]seed=(\d+)/.exec(location.search);
+    el.textContent = q ? ('seed ' + q[1]) : ('#' + s);
+  })();
+
   newGame();
+
+  // 只读验收探针：只在 ?dbg=1 时存在，不影响对局、不上报任何数
+  if (/[?&]dbg=1/.test(location.search)) {
+    window.__probe = function () {
+      var order = [];
+      for (var i = 0; i < cards.length; i++) order.push(cards[i].emoji);
+      return { seed: daySeed(), order: order, moves: moves, combo: combo, matched: matchedCount, pairs: PAIRS };
+    };
+  }
 })();
 </script>
 <script src="../assets/pulse.js?v=20261128f" defer></script>
