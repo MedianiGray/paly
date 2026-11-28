@@ -147,7 +147,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   <div class="stat"><span class="label">手数</span><strong id="moves">0</strong></div>
 </div>
 
-<p class="goal"><b>目标</b>先连成三个。机器也在抢，先连成就赢；九格填满无人连成算平。它除了每局故意漏你一次（第一次你造出威胁时它不堵），其余每一步都真的算到底——不送子，也不会漏第二次。口子只有那一个，抓不抓得住看你。</p>
+<p class="goal"><b>目标</b>先连成三个。机器也在抢，先连成就赢；九格填满无人连成算平。它除了每局故意漏你一次（第一次你造出威胁时，它选择去抢自己的两头、不回头堵你），其余每一步都真的算到底——不送子，也不会漏第二次。口子只有那一个，抓不抓得住看你。</p>
 
 <div class="status" id="status">你先手，点一格落子。</div>
 
@@ -441,6 +441,34 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   // ② 你只差一格就赢 → 它通常会堵，但这一局它有 slack 次会看漏（人会漏）
   // ③ 其余每一步都用全解搜索挑最优；最优有多个时随机取一个
   //    —— 所以每局下法不一样，背不下来，也没法靠"它总占最上面"骗它
+  // 漏你那一手时，它不是随便找个空格走掉，而是去抢自己的两头：
+  // 优先落在能跟现有 O 凑成"两个 O + 一个空"的位置，看起来是它在抢攻、没回头堵。
+  // 以前它只在"分值并列"里随机挑，偶尔挑到角落，玩家赢了会觉得是它放水。
+  var AGRI_LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+
+  function pickAggressive(skip) {
+    var best = -1, bestScore = -1;
+    for (var i = 0; i < 9; i++) {
+      if (grid[i] || i === skip) continue;
+      grid[i] = 'O';
+      var twos = 0;
+      for (var L = 0; L < AGRI_LINES.length; L++) {
+        var ln = AGRI_LINES[L], oc = 0, ec = 0, hasI = false;
+        for (var k = 0; k < 3; k++) {
+          var c = ln[k];
+          if (c === i) hasI = true;
+          if (grid[c] === 'O') oc++;
+          else if (!grid[c]) ec++;
+        }
+        if (hasI && oc === 2 && ec === 1) twos++;
+      }
+      grid[i] = '';
+      if (twos > bestScore) { bestScore = twos; best = i; }
+      else if (twos === bestScore && best >= 0 && Math.random() < 0.5) best = i;
+    }
+    return best;
+  }
+
   function machineMove() {
     var i;
     for (i = 0; i < 9; i++) {
@@ -459,6 +487,8 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     if (blockAt >= 0) {
       if (slack > 0) {
         slack -= 1;            // 这一局它一定会漏一次，不多不少
+        var aggr = pickAggressive(blockAt);
+        if (aggr >= 0) return aggr;   // 去抢自己的两头，不回头堵你
       } else {
         return blockAt;
       }
