@@ -614,3 +614,18 @@ kbd {
   white-space: nowrap;
 }
 .resume-go:hover { border-bottom-color: var(--accent); }
+
+.daily-line {
+  margin: 0 0 12px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 5px;
+  font: 500 12px/1.7 var(--mono);
+  background: rgba(53, 224, 200, .04);
+}
+.daily-line .resume-t { color: #c6d2dc; }
