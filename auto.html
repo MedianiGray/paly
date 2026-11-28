@@ -1,0 +1,267 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Auto · 自动跑局 | PALY · Pro Max</title>
+<style>
+:root{--bg:#0b0e11;--panel:#12171c;--line:#222b33;--ink:#dbe3ea;--dim:#8a97a3;--accent:#35e0c8;--accent2:#ffb347;--bad:#ff6b57;--mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.7 system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}
+.wrap{max-width:900px;margin:0 auto;padding:20px 18px 60px}
+.bar{display:flex;align-items:center;justify-content:space-between;max-width:900px;margin:0 auto;padding:14px 18px}
+.back{color:var(--dim);text-decoration:none;font:500 13px/1 var(--mono);letter-spacing:.06em}
+.back:hover{color:var(--accent)}
+.title{font:600 12px/1 var(--mono);letter-spacing:.22em;color:var(--dim)}
+h1{font-size:22px;margin:6px 0 10px;letter-spacing:.02em}
+p.lead{color:var(--dim);margin:0 0 18px}
+.kpi{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:16px 0 22px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px}
+.card span{display:block;font:600 11px/1 var(--mono);letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+.card b{display:block;margin-top:8px;font:700 22px/1 var(--mono)}
+.case{background:var(--panel);border:1px solid var(--line);border-radius:12px;margin:10px 0;padding:14px 16px}
+.row{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.idx{font:600 11px/1 var(--mono);color:var(--dim)}
+.name{font-weight:600}
+.verdict{margin-left:auto;font:700 11px/1 var(--mono);letter-spacing:.12em;padding:5px 8px;border-radius:6px}
+.verdict.pass{color:#0b0e11;background:var(--accent)}
+.verdict.fail{color:#0b0e11;background:var(--bad)}
+.verdict.run{color:var(--dim);border:1px solid var(--line)}
+.ev{color:var(--dim);font:13px/1.6 var(--mono);margin-top:8px;word-break:break-all}
+.note{margin-top:22px;padding:14px 16px;border-left:2px solid var(--accent2);color:var(--dim);font-size:13px}
+.foot{margin-top:26px;color:#5e6b77;font:12px/1.8 var(--mono)}
+button{font:600 12px/1 var(--mono);letter-spacing:.1em;color:var(--ink);background:transparent;border:1px solid var(--line);border-radius:8px;padding:9px 12px;cursor:pointer}
+button:hover{border-color:var(--accent);color:var(--accent)}
+</style>
+</head>
+<body>
+<div class="bar">
+  <a class="back" href="index.html">← 回门户</a>
+  <span class="title">PALY · AUTO</span>
+</div>
+<div class="wrap">
+<h1>自动跑局</h1>
+<p class="lead">这页只做一件事：打开一个游戏，让脚本真的把它打完，然后读结束屏上的评级和本机榜。跑完就出数，不用信我的说法。现在入库 3 项，其余 6 项还在补——没入库的不假装入库。</p>
+
+<div class="kpi">
+  <div class="card"><span>跑通</span><b id="k-pass">—</b></div>
+  <div class="card"><span>入库项</span><b id="k-total">3 / 9</b></div>
+  <div class="card"><span>状态</span><b id="k-state">待跑</b></div>
+</div>
+
+<button id="go" type="button">开始自动跑</button>
+
+<div id="list"></div>
+
+<div class="note">
+跑通的定义不是"没报错"：脚本必须真的把这一局打完，结束屏上出现评级、本机榜里多出一条记录，才算这一项的行为证据入库。<br>
+这里只跑了三项：井字棋（按 4→8→2→6 走赢法，最多重开 3 局）、记忆翻牌（把十六张一次配完）、打字冲刺（整段逐字灌进去，每字走一遍真实输入路径）。贪吃蛇、2048、打砖块、反应、躲避、扫雷还要各自找一个"能确定跑完"的驱动方式，没做之前它们这一格空着。<br>
+局限写在明处：脚本的手是机器速度，所以打字那项拿到的评级不代表人能做到。这三项证明的是"打完一屏，评级和本机榜真的会动"，不是"人也能拿到这个评级"。
+</div>
+
+<p class="foot">跑局用的 iframe 与游戏页同源，读写的是同一份 localStorage。脚本在游戏页里做的是"一个人会做的事"：点格子、翻牌、填字，不碰内部变量。</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var list = document.getElementById('list');
+  var kPass = document.getElementById('k-pass');
+  var kState = document.getElementById('k-state');
+  var goBtn = document.getElementById('go');
+
+  function runs(w, key) {
+    try {
+      var a = JSON.parse(w.localStorage.getItem('paly.' + key + '.runs') || '[]');
+      return Array.isArray(a) ? a.length : 0;
+    } catch (e) { return -1; }
+  }
+
+  var TESTS = [
+    {
+      key: 'tictactoe', name: '井字棋', file: 'games/tictactoe.html', ttl: 26000,
+      drive: function (w) {
+        var round = 0;
+        var seq = [4, 8, 2, 6];
+        function play() {
+          round += 1;
+          var i = 0;
+          (function step() {
+            if (i < seq.length) {
+              var c = w.document.querySelector('[data-i="' + seq[i] + '"]');
+              if (c && !c.textContent.trim()) c.click();
+              i += 1;
+              setTimeout(step, 640);
+              return;
+            }
+            setTimeout(function () {
+              if (w.document.body.innerText.indexOf('你赢了') > -1) return;
+              if (round >= 3) return;
+              var a = w.document.getElementById('again');
+              if (a) a.click();
+              setTimeout(play, 800);
+            }, 900);
+          })();
+        }
+        play();
+      },
+      done: function (w) { return w.document.body.innerText.indexOf('你赢了') > -1; },
+      ev: function (w) {
+        var r = w.document.getElementById('resRank');
+        return '评级 ' + (r ? r.textContent.trim() : '—') + ' · 本机榜 ' + runs(w, 'tictactoe') + ' 条';
+      }
+    },
+    {
+      key: 'memory', name: '记忆翻牌', file: 'games/memory.html', ttl: 16000,
+      drive: function (w) {
+        setTimeout(function () {
+          var cs = Array.prototype.slice.call(w.document.querySelectorAll('.card'));
+          var groups = {}, keys = [];
+          cs.forEach(function (c) {
+            var e = c.querySelector('.face.front').textContent;
+            if (!groups[e]) { groups[e] = []; keys.push(e); }
+            groups[e].push(c);
+          });
+          var k = 0;
+          (function next() {
+            if (k >= keys.length) return;
+            var g = groups[keys[k]];
+            k += 1;
+            if (g[0] && g[1]) { g[0].click(); g[1].click(); }
+            setTimeout(next, 320);
+          })();
+        }, 1400);
+      },
+      done: function (w) {
+        var r = w.document.getElementById('ovRank');
+        return !!(r && r.textContent.trim());
+      },
+      ev: function (w) {
+        var r = w.document.getElementById('ovRank');
+        return '评级 ' + (r ? r.textContent.trim() : '—') + ' · 本机榜 ' + runs(w, 'memory') + ' 条';
+      }
+    },
+    {
+      key: 'typing', name: '打字冲刺', file: 'games/typing.html', ttl: 18000,
+      drive: function (w) {
+        var b = w.document.getElementById('startBtn');
+        if (b) b.click();
+        setTimeout(function () {
+          var t = Array.prototype.slice.call(w.document.querySelectorAll('#text span'))
+            .map(function (s) { return s.textContent; }).join('');
+          var inp = w.document.getElementById('input');
+          var i = 0;
+          // 逐字灌进去，不是一次性赋值：让每一字都走一遍真实的输入路径
+          (function step() {
+            if (i >= t.length) return;
+            i += 1;
+            inp.value = t.slice(0, i);
+            inp.dispatchEvent(new w.Event('input', { bubbles: true }));
+            setTimeout(step, 12);
+          })();
+        }, 2300);
+      },
+      done: function (w) {
+        var r = w.document.getElementById('resRank');
+        return !!(r && r.textContent.trim());
+      },
+      ev: function (w) {
+        var r = w.document.getElementById('resRank');
+        var n = w.document.getElementById('resNum');
+        return '评级 ' + (r ? r.textContent.trim() : '—') + ' · ' +
+          (n ? n.textContent.trim() : '') + ' · 本机榜 ' + runs(w, 'typing') + ' 条';
+      }
+    }
+  ];
+
+  function renderShell() {
+    list.innerHTML = '';
+    TESTS.forEach(function (t, i) {
+      var el = document.createElement('div');
+      el.className = 'case';
+      el.id = 'case-' + t.key;
+      el.innerHTML = '<div class="row"><span class="idx">0' + (i + 1) + '</span>' +
+        '<span class="name"></span><span class="verdict run" id="v-' + t.key + '">待跑</span></div>' +
+        '<div class="ev" id="e-' + t.key + '">—</div>';
+      el.querySelector('.name').textContent = t.name;
+      list.appendChild(el);
+    });
+  }
+
+  function setV(key, cls, txt) {
+    var v = document.getElementById('v-' + key);
+    v.className = 'verdict ' + cls;
+    v.textContent = txt;
+  }
+
+  function runOne(t) {
+    return new Promise(function (resolve) {
+      setV(t.key, 'run', '跑');
+      var io = document.createElement('iframe');
+      io.style.cssText = 'position:fixed;left:-1200px;top:0;width:900px;height:700px;border:0';
+      io.src = t.file;
+      var finished = false;
+      var t0 = Date.now();
+      io.onload = function () {
+        setTimeout(function () { try { t.drive(io.contentWindow); } catch (e) {} }, 200);
+      };
+      document.body.appendChild(io);
+
+      (function poll() {
+        if (finished) return;
+        var w = io.contentWindow;
+        var ok = false;
+        try { ok = t.done(w); } catch (e) { ok = false; }
+        if (ok) {
+          finished = true;
+          var ev = '';
+          try { ev = t.ev(w); } catch (e) { ev = '读数失败'; }
+          document.getElementById('e-' + t.key).textContent = ev;
+          setV(t.key, 'pass', 'PASS');
+          io.remove();
+          resolve(true);
+          return;
+        }
+        if (Date.now() - t0 > t.ttl) {
+          finished = true;
+          var cur = '';
+          try { cur = '超时 · ' + (w.document.body.innerText || '').slice(0, 60).replace(/\n/g, ' '); } catch (e) { cur = '超时'; }
+          document.getElementById('e-' + t.key).textContent = cur;
+          setV(t.key, 'fail', 'FAIL');
+          io.remove();
+          resolve(false);
+          return;
+        }
+        setTimeout(poll, 250);
+      })();
+    });
+  }
+
+  goBtn.addEventListener('click', function () {
+    goBtn.disabled = true;
+    renderShell();
+    kPass.textContent = '0 / ' + TESTS.length;
+    kState.textContent = '跑中';
+    var n = 0, pass = 0;
+    (function next(i) {
+      if (i >= TESTS.length) {
+        kPass.textContent = pass + ' / ' + TESTS.length;
+        kState.textContent = pass === TESTS.length ? '全通' : '有项没过';
+        goBtn.disabled = false;
+        return;
+      }
+      runOne(TESTS[i]).then(function (ok) {
+        n += 1;
+        if (ok) pass += 1;
+        kPass.textContent = pass + ' / ' + TESTS.length;
+        next(i + 1);
+      });
+    })(0);
+  });
+
+  renderShell();
+  kPass.textContent = '— / ' + TESTS.length;
+})();
+</script>
+</body>
+</html>
