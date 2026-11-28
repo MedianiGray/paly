@@ -119,6 +119,43 @@
       '<span class="resume-t">还没有哪一区留下记录。随便挑一个进去，回来这里会记住你停在哪。</span>';
   })();
 
+  // 0d) 今天的题：一天只推一个区（Wordle 的结构：稀缺 + 焦点，不是砍功能）
+  (function renderDaily() {
+    var host = document.getElementById('daily-line');
+    if (!host) return;
+    var AREAS = [
+      { key: 'snake', name: '贪吃蛇' }, { key: 'g2048', name: '2048' },
+      { key: 'memory', name: '记忆翻牌' }, { key: 'breakout', name: '打砖块' },
+      { key: 'reaction', name: '反应测试' }, { key: 'dodge', name: '躲避' },
+      { key: 'minesweeper', name: '扫雷' }, { key: 'typing', name: '打字冲刺' },
+      { key: 'tictactoe', name: '井字棋' }
+    ];
+    var now = new Date();
+    var seed = now.getFullYear() * 372 + (now.getMonth() + 1) * 31 + now.getDate();
+    var pick = AREAS[seed % AREAS.length];
+    var todayKey = '' + now.getFullYear() + (now.getMonth() + 1) + now.getDate();
+    var todayRuns = 0, playedToday = false;
+    try {
+      var runs = JSON.parse(localStorage.getItem('paly.' + pick.key + '.runs') || '[]');
+      if (Array.isArray(runs)) {
+        runs.forEach(function (r) {
+          if (!r || !r.at) return;
+          var d = new Date(r.at);
+          if (('' + d.getFullYear() + (d.getMonth() + 1) + d.getDate()) === todayKey) {
+            todayRuns += 1;
+            playedToday = true;
+          }
+        });
+      }
+    } catch (e) {}
+    host.innerHTML = '<span class="resume-k">今天的题</span>' +
+      '<span class="resume-t">' + pick.name + ' · ' +
+      (playedToday ? '今天已经打过 ' + todayRuns + ' 局' : '今天还没打') +
+      '。就这一个，别九个摊开。</span>' +
+      '<a class="resume-go" href="games/' + pick.key + '.html">' +
+      (playedToday ? '再打一局 →' : '去打今天的题 →') + '</a>';
+  })();
+
   // 1) 让卡片可用回车进入（部分老浏览器对 a 元素的可聚焦处理不一致）
   document.querySelectorAll('.card').forEach(function (card) {
     card.addEventListener('keydown', function (e) {
