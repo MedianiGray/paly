@@ -44,6 +44,29 @@
     host.setAttribute('data-played', String(played));
   })();
 
+  // 0a) 首次访问随机分组，并把组别带进每个区的链接里
+  (function armAssign() {
+    var a = 'hooks';
+    try {
+      a = localStorage.getItem('paly.arm');
+      if (!a) {
+        a = Math.random() < 0.5 ? 'hooks' : 'plain';
+        localStorage.setItem('paly.arm', a);
+      }
+      document.querySelectorAll('.card').forEach(function (c) {
+        var h = c.getAttribute('href');
+        if (h && h.indexOf('arm=') < 0) {
+          c.setAttribute('href', h + (h.indexOf('?') > -1 ? '&' : '?') + 'arm=' + a);
+        }
+      });
+    } catch (e) {}
+    var host = document.getElementById('arm-line');
+    if (host) {
+      host.textContent = '你这次被分到' + (a === 'plain' ? '对照组（结束屏没有钩子）' : '钩子组（结束屏带目标与承诺）') +
+        '。这是随机的，刷新不会改。';
+    }
+  })();
+
   // 0b) 留人读数：读全站两个公开计数（进区次数 / 点再来次数）+ 今日进区
   (function renderPulse() {
     var line = document.getElementById('pulse-line');
@@ -58,7 +81,10 @@
         .then(function (j) { return j && typeof j.value === 'number' ? j.value : 0; })
         ['catch'](function () { return null; });
     }
-    Promise.all([get('total-open'), get('total-replay'), get('d-' + today + '-open')]).then(function (a) {
+    Promise.all([
+      get('total-open'), get('total-replay'), get('d-' + today + '-open'),
+      get('o-hooks'), get('o-plain'), get('r-hooks'), get('r-plain')
+    ]).then(function (a) {
       if (a[0] === null || a[1] === null) {
         line.textContent = '留人读数：读不到全站计数（断网或计数服务不可达）。游戏不受影响。';
         return;
@@ -66,7 +92,28 @@
       var open = a[0] || 0, replay = a[1] || 0, todayOpen = a[2] || 0;
       var rate = open > 0 ? (replay / open).toFixed(2) : '0.00';
       line.textContent = '留人读数：全区被打开 ' + open + ' 次（今天 ' + todayOpen + ' 次），有人点了 ' + replay +
-        ' 次"再来一局"——平均每打开一次，点 ' + rate + ' 次再来。这个数只涨不骗人，谁都能在同一页读到。';
+        ' 次"再来一局"——平均每打开一次，点 ' + rate + ' 次再来。谁都能在同一页读到。';
+
+      // 对照实验判定：规则写死在这里，结论由数字给，不由我说。
+      var ab = document.getElementById('ab-line');
+      if (!ab) return;
+      var oh = a[3] || 0, op = a[4] || 0, rh = a[5] || 0, rp = a[6] || 0;
+      var N = 30;
+      var rateH = oh > 0 ? rh / oh : 0;
+      var rateP = op > 0 ? rp / op : 0;
+      var head = '对照实验：钩子组 ' + oh + ' 次打开 / ' + rh + ' 次再来（' + rateH.toFixed(2) + '）；' +
+        '对照组 ' + op + ' / ' + rp + '（' + rateP.toFixed(2) + '）。';
+      if (oh < N || op < N) {
+        ab.textContent = head + '样本不足：两组各到 ' + N + ' 次真实打开才能下结论（还差 ' +
+          Math.max(0, N - oh) + ' / ' + Math.max(0, N - op) + '）。现在下结论就是编。';
+        return;
+      }
+      if (rateH >= 0.5 && rateH >= rateP * 1.5) {
+        ab.textContent = head + '样本已够，钩子组达到 0.50 且是对照组的 ' +
+          (rateP > 0 ? (rateH / rateP).toFixed(2) : '∞') + ' 倍——这套钩子在这次实验里成立。';
+      } else {
+        ab.textContent = head + '样本已够，但没到"0.50 且 1.5 倍"的门槛——这套钩子没兑现，得回去改。';
+      }
     });
   })();
 
@@ -154,6 +201,36 @@
       '。就这一个，别九个摊开。</span>' +
       '<a class="resume-go" href="games/' + pick.key + '.html">' +
       (playedToday ? '再打一局 →' : '去打今天的题 →') + '</a>';
+  })();
+
+  // 0e) 把今天的题发出去：复制一段话，链接故意不带组别（让对方自己随机）
+  (function shareBox() {
+    var btn = document.getElementById('share-btn');
+    if (!btn) return;
+    var txt = 'GODLIKE INVINCIBLE FUN ZONE · PRO MAX —— 九个纯前端小游戏，今天只有一道题，两分钟。\nhttps://medianigray.github.io/paly/';
+    function ok() { btn.textContent = '已复制 · 粘贴发送就行'; }
+    function fallback() {
+      var ta = document.createElement('textarea');
+      ta.value = txt;
+      ta.style.cssText = 'position:fixed;left:-999px';
+      document.body.appendChild(ta);
+      ta.select();
+      var done = false;
+      try { done = document.execCommand('copy'); } catch (e) {}
+      ta.parentNode.removeChild(ta);
+      btn.textContent = done ? '已复制 · 粘贴发送就行' : '复制失败：手选下面的链接';
+      if (!done) {
+        var box = document.createElement('p');
+        box.className = 'share-fallback';
+        box.textContent = 'https://medianigray.github.io/paly/';
+        btn.parentNode.insertBefore(box, btn.nextSibling);
+      }
+    }
+    btn.addEventListener('click', function () {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(txt).then(ok)['catch'](fallback);
+      } else fallback();
+    });
   })();
 
   // 1) 让卡片可用回车进入（部分老浏览器对 a 元素的可聚焦处理不一致）
