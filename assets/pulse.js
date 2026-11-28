@@ -18,16 +18,25 @@
     } catch (e) {}
   }
 
+  function ymd() {
+    var d = new Date();
+    return '' + d.getFullYear() +
+      ('0' + (d.getMonth() + 1)).slice(-2) +
+      ('0' + d.getDate()).slice(-2);
+  }
+
   // 进入这一页：同一标签页会话里只记一次，刷新不虚高
   try {
     if (!sessionStorage.getItem('paly-pulse-' + page)) {
       sessionStorage.setItem('paly-pulse-' + page, '1');
       hit(page + '-open');
       hit('total-open');
+      hit('d-' + ymd() + '-open');
     }
   } catch (e) {
     hit(page + '-open');
     hit('total-open');
+    hit('d-' + ymd() + '-open');
   }
 
   // 点"再来一局 / 再开 / 重开"：每次记一次，单页最多 20 次，防连点刷数
