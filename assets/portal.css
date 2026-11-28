@@ -588,3 +588,29 @@ kbd {
   color: #8a97a3;
 }
 .pulse-line.is-live { color: var(--accent); }
+
+.resume-line {
+  margin: 10px 0 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px 12px;
+  font: 500 12px/1.7 var(--mono);
+  color: #8a97a3;
+}
+.resume-k {
+  padding: 1px 7px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  font-size: 10px;
+  letter-spacing: .16em;
+  color: #6f7d8a;
+}
+.resume-t { flex: 1 1 260px; color: #9aa7b4; }
+.resume-go {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(53, 224, 200, .35);
+  white-space: nowrap;
+}
+.resume-go:hover { border-bottom-color: var(--accent); }
