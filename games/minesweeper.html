@@ -146,7 +146,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   <div class="stat best"><span class="label">最快</span><strong id="best">—</strong></div>
 </div>
 
-<p class="goal"><b>目标</b>数字是周围八格的雷数。靠它推、靠它排，翻开 71 个非雷格就算清台。</p>
+<p class="goal"><b>目标</b>数字是周围八格的雷数。靠它推、靠它排，翻开 71 个非雷格就算清台。数字格上的旗插满一圈时，双击它（或按中键）一次推开周围所有格子——把"一格一格点"变成"一段一段推"，15 秒档只有这一条路。</p>
 
 <div class="stage" id="stage">
   <div class="board" id="board" aria-label="9×9 扫雷棋盘"></div>
@@ -160,7 +160,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   <button class="again" id="again" type="button">再来一局</button>
 </div>
 
-<p class="hint"><a href="../index.html" style="color:#35e0c8;text-decoration:none">← 回九个区看总账</a> · 左键翻开 · 右键插旗 · 手机长按插旗 · <kbd>R</kbd> 重开</p>
+<p class="hint"><a href="../index.html" style="color:#35e0c8;text-decoration:none">← 回九个区看总账</a> · 左键翻开 · 右键插旗 · 手机长按插旗 · 数字格双击（中键）和弦 · <kbd>R</kbd> 重开</p>
 
 <script>
 (function () {
@@ -456,6 +456,31 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     burst(p.x, p.y, 4, '#ffd166', '#ffb347', 20);
   }
 
+  // 和弦：在一个已翻开的数字格上双击（或按中键），当周围的旗数正好等于这个数字时，
+  // 把周围其余未标记的格子一次全开。这是扫雷从"一格一格点"变成"一段一段推"的分水岭，
+  // 没有它，9×9 十雷的 15 秒档根本不是一个能到的刻度。
+  function chord(i) {
+    if (state !== 'running' || !opened[i] || count[i] <= 0) return;
+    var ns = neighbors(i), flags = 0, targets = [];
+    for (var k = 0; k < ns.length; k++) {
+      var q = ns[k];
+      if (flagged[q]) flags++;
+      else if (!opened[q]) targets.push(q);
+    }
+    if (flags !== count[i] || !targets.length) {
+      // 数不对：抖一下，让人知道"点了，但条件不满足"，而不是没反应
+      shakeBoard();
+      tone(210, 0.09, 'square', 0.032, 0, 150);
+      return;
+    }
+    // 先整体判定，踩中就炸
+    for (var t = 0; t < targets.length; t++) {
+      if (mine[targets[t]]) { boom(targets[t]); return; }
+    }
+    tone(700, 0.06, 'triangle', 0.05);
+    for (var u = 0; u < targets.length; u++) reveal(targets[u]);
+  }
+
   function reveal(i) {
     if (state === 'over' || opened[i] || flagged[i]) return;
 
@@ -602,6 +627,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   function bindCell(el, i) {
     el.addEventListener('pointerdown', function (e) {
+      if (e.button === 1) { e.preventDefault(); chord(i); return; }
       if (e.button === 2 || state === 'over') return;
       clearTimeout(pressTimer);
       pressTimer = setTimeout(function () {
@@ -616,6 +642,10 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     el.addEventListener('click', function () {
       if (suppressClick) { suppressClick = false; return; }
       reveal(i);
+    });
+    el.addEventListener('dblclick', function (e) {
+      e.preventDefault();
+      chord(i);
     });
     el.addEventListener('contextmenu', function (e) {
       e.preventDefault();
@@ -637,6 +667,19 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   window.addEventListener('resize', sizeFx);
 
   newGame();
+
+  // 只读验收探针：只在 ?dbg=1 时存在
+  if (/[?&]dbg=1/.test(location.search)) {
+    window.__probe = function () {
+      return {
+        state: state, opened: openedCount, flags: flagCount,
+        count: count.map(function (n) { return n; }),
+        mine: mine.map(function (m) { return !!m; }),
+        openArr: opened.map(function (o) { return !!o; }),
+        flagArr: flagged.map(function (f) { return !!f; })
+      };
+    };
+  }
 })();
 </script>
 <script src="../assets/pulse.js?v=20261128f" defer></script>
