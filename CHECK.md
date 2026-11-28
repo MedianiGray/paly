@@ -99,6 +99,16 @@
 
 补到 9/9 的办法：在 `auto.html` 的 `TESTS` 里按同样格式加一行——一条确定的驱动 + 一个"结束屏出现评级"的判定。写不出来就说明那个项目的结束条件本身不够确定，先改项目，别改证据。
 
+4. **"有人真的点了再来一局"**——这一条不再只有我的判断。九页挂的 `assets/pulse.js` 上报 `total-open` / `total-replay` 两个公开计数，任何人可以不经门户直接核对：
+
+   ```
+   GET https://abacus.jasoncameron.dev/get/medianigray-paly-v1/total-open
+   GET https://abacus.jasoncameron.dev/get/medianigray-paly-v1/total-replay
+   ```
+
+   返回形如 `{"value":N}`。复跑方式：开任一游戏页 → 把一局打到结束屏 → 按"再来一局" → 重开这两个 URL，第二个数应 +1。
+   它的边界也写明：这是**比率**不是人数，同一人连玩会推高它；端点是公开可写的，外人理论能刷；次日回访做不出来，这一项仍然空着。
+
 ---
 
 ## 六、进门条件（以后加项目照这个来）
