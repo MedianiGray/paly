@@ -99,7 +99,7 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
   </div>
 </div>
 
-<p class="goal"><b>目标</b>拍子接球消砖。球落地扣一条命，三条用完给评级。</p>
+<p class="goal"><b>目标</b>拍子接球消砖。球落地扣一条命，三条用完给评级。同一颗球连续消砖会攒链：第 8 块起每块 ×2，第 16 块起 ×3，漏球即断。等级看层数，连击只加分数和手感——想让链活久一点，就别急着把球打回拍面正中央。</p>
 
 <div class="stage" id="stage">
   <canvas id="board"></canvas>
@@ -155,6 +155,7 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
   var trail = [];             // 球的残影位置
   var paddleX = W / 2;
   var score = 0, best = 0, lives = 3, level = 1;
+  var chain = 0, mult = 1;    // 连击链：同一颗球连续消砖，漏球即断
   var speed = BASE_SPEED;
   var lastTs = 0, rafId = 0;
   var keys = { left: false, right: false };
@@ -199,6 +200,13 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
   function sfxPaddle() { tone(230, 0.07, 'square', 0.06, 0, 300); }
   function sfxBrick(row) { tone(420 + (3 - row) * 95, 0.08, 'triangle', 0.08); }
   function sfxLife() { tone(200, 0.3, 'sawtooth', 0.09, 0, 90); }
+  // 连击升档：两声不同高低的确认音 + 一次震屏，让"这条链还在"听得见
+  function sfxChain(m, n) {
+    tone(620 + m * 110, 0.11, 'triangle', 0.07);
+    tone(920 + m * 150, 0.13, 'sine', 0.055, 0.09);
+    shake = Math.max(shake, 3.4);
+    addFloat(W / 2, H * 0.42, 'CHAIN ×' + m, '#ffd166');
+  }
   function sfxLevel() {
     var notes = [523, 698, 880, 1174];
     for (var i = 0; i < notes.length; i++) tone(notes[i], 0.22, 'triangle', 0.1, i * 0.08);
@@ -321,6 +329,7 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
   function reset() {
     layoutBricks();
     score = 0; lives = 3; level = 1;
+    chain = 0; mult = 1;
     speed = BASE_SPEED;
     paddleX = W / 2;
     scoreEl.textContent = '0';
@@ -443,6 +452,15 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
     ctx.fillStyle = 'rgba(111,125,138,.9)';
     ctx.fillText('LEVEL ' + level, PAD_X, 34);
 
+    // 连击：同一颗球连续消砖，越连越值钱。漏球就断链。
+    if (chain > 0) {
+      ctx.textAlign = 'right';
+      ctx.font = '700 13px ui-monospace,Consolas,monospace';
+      ctx.fillStyle = mult > 1 ? 'rgba(255,209,102,.95)' : 'rgba(111,125,138,.75)';
+      ctx.fillText((mult > 1 ? '×' + mult + '  ' : '') + 'CHAIN ' + chain, W - PAD_X, 34);
+      ctx.textAlign = 'left';
+    }
+
     // 倒计时大字
     if (state === 'ready') {
       ctx.textAlign = 'center';
@@ -478,7 +496,13 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
 
       b.alive = false;
       b.glow = 0;
-      score += 10;
+
+      // 连击：第 8 块起 ×2，第 16 块起 ×3。链只在一颗球上累计，漏球清零。
+      chain += 1;
+      var nmult = chain >= 16 ? 3 : (chain >= 8 ? 2 : 1);
+      if (nmult !== mult) { mult = nmult; sfxChain(mult, chain); }
+      var gain = 10 * mult;
+      score += gain;
       scoreEl.textContent = score;
       if (score > best) {
         best = score;
@@ -487,7 +511,7 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
       }
 
       shatter(b);
-      addFloat(b.x + b.w / 2, b.y + b.h / 2, '+10', COLORS[b.row % COLORS.length][0]);
+      addFloat(b.x + b.w / 2, b.y + b.h / 2, '+' + gain + (mult > 1 ? ' ×' + mult : ''), mult > 1 ? '#ffd166' : COLORS[b.row % COLORS.length][0]);
       sfxBrick(b.row);
       shake = Math.max(shake, 2.4);
 
@@ -543,6 +567,7 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
 
     // 漏球
     if (ball.y - BALL_R > H) {
+      chain = 0; mult = 1;          // 漏球 = 链断，回到 ×1
       lives -= 1;
       livesEl.textContent = lives;
       sfxLife();
@@ -558,6 +583,7 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
 
     // 清层
     if (bricks.every(function (b) { return !b.alive; })) {
+      chain = 0; mult = 1;        // 换层换球，链从 ×1 重新起
       score += 50;
       scoreEl.textContent = score;
       if (score > best) {
@@ -763,6 +789,14 @@ canvas{display:block; width:100%; height:100%; touch-action:none}
 
   fit();
   reset();
+
+  // 只读验收探针：只在 ?dbg=1 时存在，不影响对局、不上报任何数
+  if (/[?&]dbg=1/.test(location.search)) {
+    window.__probe = function () {
+      return { score: score, level: level, lives: lives, chain: chain, mult: mult, state: state, alive: bricks.filter(function (b) { return b.alive; }).length };
+    };
+  }
+
   rafId = requestAnimationFrame(loop);
 })();
 </script>
