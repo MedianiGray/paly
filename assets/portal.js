@@ -44,6 +44,30 @@
     host.setAttribute('data-played', String(played));
   })();
 
+  // 0b) 留人读数：读全站两个公开计数（进区次数 / 点再来次数）
+  (function renderPulse() {
+    var line = document.getElementById('pulse-line');
+    if (!line) return;
+    var BASE = 'https://abacus.jasoncameron.dev';
+    var NS = 'medianigray-paly-v1';
+    function get(k) {
+      return fetch(BASE + '/get/' + NS + '/' + k, { cache: 'no-store' })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (j) { return j && typeof j.value === 'number' ? j.value : 0; })
+        ['catch'](function () { return null; });
+    }
+    Promise.all([get('total-open'), get('total-replay')]).then(function (a) {
+      if (a[0] === null || a[1] === null) {
+        line.textContent = '留人读数：读不到全站计数（断网或计数服务不可达）。游戏不受影响。';
+        return;
+      }
+      var open = a[0] || 0, replay = a[1] || 0;
+      var rate = open > 0 ? (replay / open).toFixed(2) : '0.00';
+      line.textContent = '留人读数：全区被打开 ' + open + ' 次，有人点了 ' + replay +
+        ' 次"再来一局"——平均每打开一次，点 ' + rate + ' 次再来。这个数只涨不骗人，谁都能在同一页读到。';
+    });
+  })();
+
   // 1) 让卡片可用回车进入（部分老浏览器对 a 元素的可聚焦处理不一致）
   document.querySelectorAll('.card').forEach(function (card) {
     card.addEventListener('keydown', function (e) {
