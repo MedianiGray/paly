@@ -489,26 +489,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     else if (kind === 'draw') head = '平局 · 九格填满 · ' + (ms / 1000).toFixed(1) + 's';
     else head = '输了 · 机器连成三个 · ' + (ms / 1000).toFixed(1) + 's';
     resNum.innerHTML = head + ' · 连胜 <b>' + streak + '</b>';
-    // 下次目标：给一个具体数字
-    var oldGoal = document.getElementById('ttt-goal');
-    if (oldGoal) oldGoal.parentNode.removeChild(oldGoal);
-    (function () {
-      var bestM = 0;
-      try {
-        var rs = JSON.parse(localStorage.getItem(RUNS_KEY) || '[]');
-        (Array.isArray(rs) ? rs : []).forEach(function (r) {
-          if (r && typeof r.m === 'number' && r.m > 0 && (!bestM || r.m < bestM)) bestM = r.m;
-        });
-      } catch (e) { bestM = 0; }
-      var g = document.createElement('div');
-      g.id = 'ttt-goal';
-      g.style.cssText = 'margin-top:8px;font:600 12px/1.6 var(--mono,monospace);color:#35e0c8';
-      if (kind !== 'win') g.textContent = '它每局必漏一次——下一次抓它漏的那一步。';
-      else if (!bestM || myMoves < bestM) g.textContent = '新纪录立住了——下一局守它。';
-      else if (myMoves === bestM) g.textContent = '手数追平最好，下回试着少一手。';
-      else g.textContent = '距你的最好（' + bestM + ' 手）还差 ' + (myMoves - bestM) + ' 手。';
-      resNum.parentNode.insertBefore(g, resNum.nextSibling);
-    })();
+    // 下一局的具体目标由 assets/hook.js 统一挂在结束屏上（含"它每局必漏一次"这句）
 
     if (kind === 'win') {
       var run = { m: myMoves, at: Date.now(), id: Date.now() + '-' + Math.random().toString(36).slice(2, 8) };
@@ -654,5 +635,6 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 })();
 </script>
 <script src="../assets/pulse.js" defer></script>
+<script src="../assets/hook.js" defer></script>
 </body>
 </html>
