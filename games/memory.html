@@ -148,7 +148,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   </div>
 </div>
 
-<p class="goal"><b>目标</b>八对牌全部配对。翻开两张算一步，步数越少越强；清台给评级。连对会在两张牌之间拉起一条线，连得越久线越亮——断了就从头再连。<strong>每天一副固定的牌（今天这副 <span id="caseNo">—</span>），全网同一副，明天换。</strong>所以 8 步清台是真记住了这副牌，不是碰运气。</p>
+<p class="goal"><b>目标</b>八对牌全部配对。翻开两张算一步，步数越少越强；清台给评级。连对会在两张牌之间拉起一条线，连得越久线越亮——断了就从头再连。<strong>每天第一副牌全网同一副（今天这副 <span id="caseNo">—</span>），第二副起换牌——同一天里没人能背位置。</strong>所以 8 步清台是真记住了这副牌，不是碰运气。</p>
 
 <div class="stage" id="stage">
   <div class="deck" id="deck" aria-label="记忆翻牌棋盘"></div>
@@ -390,13 +390,34 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   }
 
   /* ---------- 牌桌 ---------- */
-  // 每天一副固定的牌：同一副牌全网一样，明天换。
-  // 随机发牌时，8 步清台多半是碰上；固定牌局之后，8 步只能是真记住。
-  function daySeed() {
-    var q = /[?&]seed=(\d+)/.exec(location.search);
-    if (q) return parseInt(q[1], 10);
+  // 每天第一副牌是固定的：全网同一副，8 步清台只能是真记住。
+  // 但第二局起必须换牌——不然一天里所有人都背的是同一副位置，记忆就不算记忆了。
+  // 编号公开：第 1 副 seed = 日期数，第 n 副 = 日期数 + (n-1)×7919，地址加 ?seed= 可复现任意一副。
+  var SEED_STEP = 7919;
+  var ROUND_KEY = 'paly.memory.round';
+  var curSeed = 0, curRound = 1, curForced = false;
+
+  function baseSeed() {
     var d = new Date();
     return d.getFullYear() * 372 + (d.getMonth() + 1) * 31 + d.getDate();
+  }
+
+  function nextSeed() {
+    var q = /[?&]seed=(\d+)/.exec(location.search);
+    if (q) return { seed: parseInt(q[1], 10), round: 0, forced: true };
+    var r = 1;
+    try { r = (parseInt(localStorage.getItem(ROUND_KEY) || '0', 10) || 0) + 1; } catch (e) { r = 1; }
+    try { localStorage.setItem(ROUND_KEY, String(r)); } catch (e) {}
+    return { seed: baseSeed() + (r - 1) * SEED_STEP, round: r, forced: false };
+  }
+
+  function renderCaseNo(si) {
+    var el = document.getElementById('caseNo');
+    if (!el) return;
+    var d = new Date();
+    var day = String(d.getFullYear()).slice(2) + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
+    el.textContent = si.forced ? ('seed ' + si.seed) : ('#' + day + '·R' + si.round);
+    el.title = si.forced ? '指定牌局' : ('seed ' + si.seed + '（第 1 副 = 当天日期数，第 n 副 = 日期数 + (n-1)×7919）');
   }
 
   function mulberry32(a) {
@@ -420,7 +441,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
   function build() {
     var pool = [];
     EMOJI.forEach(function (e) { pool.push(e); pool.push(e); });
-    shuffle(pool, mulberry32(daySeed()));
+    shuffle(pool, mulberry32(curSeed));
 
     deckEl.innerHTML = '';
     cards = [];
@@ -595,6 +616,11 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     started = false;
     movesEl.textContent = '0';
     timeEl.textContent = '0s';
+    var si = nextSeed();
+    curSeed = si.seed;
+    curRound = si.round;
+    curForced = si.forced;
+    renderCaseNo(si);
     build();
     sizeFx();
     dealIn();
@@ -611,16 +637,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
 
   window.addEventListener('resize', function () { sizeFx(); });
 
-  // 牌局编号：把种子写成 YYMMDD，让"今天这副"看得见
-  (function () {
-    var el = document.getElementById('caseNo');
-    if (!el) return;
-    var d = new Date();
-    var s = String(d.getFullYear()).slice(2) + ('0' + (d.getMonth() + 1)).slice(-2) + ('0' + d.getDate()).slice(-2);
-    var q = /[?&]seed=(\d+)/.exec(location.search);
-    el.textContent = q ? ('seed ' + q[1]) : ('#' + s);
-  })();
-
+  // 牌局编号在每局开局时写（见 newGame），这里只做首屏兜底
   newGame();
 
   // 只读验收探针：只在 ?dbg=1 时存在，不影响对局、不上报任何数
@@ -628,7 +645,7 @@ button:focus-visible{outline:2px solid rgba(53,224,200,.55); outline-offset:2px}
     window.__probe = function () {
       var order = [];
       for (var i = 0; i < cards.length; i++) order.push(cards[i].emoji);
-      return { seed: daySeed(), order: order, moves: moves, combo: combo, matched: matchedCount, pairs: PAIRS };
+      return { seed: curSeed, round: curRound, order: order, moves: moves, combo: combo, matched: matchedCount, pairs: PAIRS };
     };
   }
 })();
