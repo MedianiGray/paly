@@ -9,10 +9,26 @@
 
   var NS = 'medianigray-paly-v2';
   var BASE = 'https://abacus.jasoncameron.dev';
+  // 调试旁路：带 dbg=1 的页面照常玩、照常测试，但一个数都不报。
+  // 我自己验收时一律用它，所以两组样本里不会有我跑出来的数。
+  var SKIP = /[?&]dbg=1/.test(location.search);
   var m = location.pathname.match(/\/games\/([a-z0-9]+)\.html/i);
   var page = m ? m[1].toLowerCase() : 'portal';
 
+  // 对照实验分组：URL 参数优先，其次用门户给这个浏览器分配的组，最后默认 hooks。
+  function armOf() {
+    var q = location.search;
+    if (/[?&]arm=plain/.test(q)) return 'plain';
+    if (/[?&]arm=hooks/.test(q)) return 'hooks';
+    try {
+      var a = localStorage.getItem('paly.arm');
+      return a === 'plain' ? 'plain' : 'hooks';
+    } catch (e) { return 'hooks'; }
+  }
+  var arm = armOf();
+
   function hit(k) {
+    if (SKIP) return;
     try {
       fetch(BASE + '/hit/' + NS + '/' + encodeURIComponent(k), {
         mode: 'cors',
@@ -35,11 +51,13 @@
       sessionStorage.setItem('paly-pulse-' + page, '1');
       hit(page + '-open');
       hit('total-open');
+      hit('o-' + arm);
       hit('d-' + ymd() + '-open');
     }
   } catch (e) {
     hit(page + '-open');
     hit('total-open');
+    hit('o-' + arm);
     hit('d-' + ymd() + '-open');
   }
 
@@ -59,5 +77,6 @@
     n += 1;
     hit(page + '-replay');
     hit('total-replay');
+    hit('r-' + arm);
   }, true);
 })();
