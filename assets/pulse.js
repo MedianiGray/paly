@@ -3,7 +3,11 @@
    数据打到一个公开计数器，任何人打开 index.html 都能读到同一份。 */
 (function () {
   'use strict';
-  var NS = 'medianigray-paly-v1';
+  // 被验收台/压测台/自动跑局用 iframe 装进来时，一律不报：
+  // 那不是"有人进门"，是机器在跑。让公开计数只收真人的。
+  if (window.top !== window.self) return;
+
+  var NS = 'medianigray-paly-v2';
   var BASE = 'https://abacus.jasoncameron.dev';
   var m = location.pathname.match(/\/games\/([a-z0-9]+)\.html/i);
   var page = m ? m[1].toLowerCase() : 'portal';
@@ -40,15 +44,20 @@
   }
 
   // 点"再来一局 / 再开 / 重开"：每次记一次，单页最多 20 次，防连点刷数
-  var n = 0;
+  // 只认真实指针/键盘点击（isTrusted），脚本 el.click() 一律不算；
+  // 同一按钮 400ms 内的连点也只算一次。
+  var n = 0, lastAt = 0;
   document.addEventListener('click', function (e) {
+    if (e.isTrusted === false) return;
     var el = e.target && e.target.closest ? e.target.closest('button,a') : null;
     if (!el) return;
     var t = (el.textContent || '').replace(/\s+/g, '');
-    if (/再来|再开|重开|again|restart/i.test(t) && n < 20) {
-      n += 1;
-      hit(page + '-replay');
-      hit('total-replay');
-    }
+    if (!/再来|再开|重开|again|restart/i.test(t) || n >= 20) return;
+    var now = Date.now();
+    if (now - lastAt < 400) return;
+    lastAt = now;
+    n += 1;
+    hit(page + '-replay');
+    hit('total-replay');
   }, true);
 })();
